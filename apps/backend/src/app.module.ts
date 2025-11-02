@@ -16,6 +16,7 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { HealthModule } from './modules/health/health.module';
+import { PublicModule } from './modules/public/public.module';
 import { entities } from './database/entities';
 
 // Configuración de la base de datos
@@ -96,6 +97,7 @@ import { dataSourceOptions } from './database/data-source';
     AnalyticsModule,
     PaymentsModule,
     UploadModule,
+    PublicModule,
   ],
 })
 export class AppModule {}

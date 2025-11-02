@@ -215,11 +215,81 @@ class AuthService {
       if (response.statusCode == 201 || response.statusCode == 200) {
         debugPrint('🔍 Respuesta del backend: ${response.data}');
         try {
-          final authResponse = AuthResponse.fromJson(response.data);
+          // Debug: Verificar estructura antes de parsear
+          final data = response.data as Map<String, dynamic>;
+          debugPrint('🔍 Estructura de datos:');
+          debugPrint('  - access_token: ${data['access_token'] != null ? "presente" : "ausente"}');
+          debugPrint('  - user: ${data['user'] != null ? "presente" : "ausente"}');
+          
+          if (data['user'] != null) {
+            final userData = data['user'] as Map<String, dynamic>;
+            debugPrint('  - user.id: ${userData['id']}');
+            debugPrint('  - user.email: ${userData['email']}');
+            debugPrint('  - user.username: ${userData['username']}');
+            debugPrint('  - user.first_name: ${userData['first_name']}');
+            debugPrint('  - user.last_name: ${userData['last_name']}');
+            debugPrint('  - user.role: ${userData['role']}');
+            debugPrint('  - user.subscription_status: ${userData['subscription_status']}');
+          }
+          
+          // Validar que los campos requeridos del user no sean null
+          if (data['user'] != null) {
+            final userData = data['user'] as Map<String, dynamic>;
+            // Asegurar que los campos requeridos no sean null
+            if (userData['first_name'] == null && userData['firstName'] == null) {
+              debugPrint('❌ Error: first_name/firstName es null');
+              throw AuthException('El campo first_name es requerido pero está ausente');
+            }
+            if (userData['last_name'] == null && userData['lastName'] == null) {
+              debugPrint('❌ Error: last_name/lastName es null');
+              throw AuthException('El campo last_name es requerido pero está ausente');
+            }
+            
+            // Normalizar a snake_case si viene en camelCase
+            if (userData.containsKey('firstName') && !userData.containsKey('first_name')) {
+              userData['first_name'] = userData['firstName'];
+              userData.remove('firstName');
+            }
+            if (userData.containsKey('lastName') && !userData.containsKey('last_name')) {
+              userData['last_name'] = userData['lastName'];
+              userData.remove('lastName');
+            }
+            if (userData.containsKey('avatarUrl') && !userData.containsKey('avatar_url')) {
+              userData['avatar_url'] = userData['avatarUrl'];
+              userData.remove('avatarUrl');
+            }
+            if (userData.containsKey('subscriptionStatus') && !userData.containsKey('subscription_status')) {
+              userData['subscription_status'] = userData['subscriptionStatus'];
+              userData.remove('subscriptionStatus');
+            }
+            if (userData.containsKey('isVerified') && !userData.containsKey('is_verified')) {
+              userData['is_verified'] = userData['isVerified'];
+              userData.remove('isVerified');
+            }
+            if (userData.containsKey('isActive') && !userData.containsKey('is_active')) {
+              userData['is_active'] = userData['isActive'];
+              userData.remove('isActive');
+            }
+            if (userData.containsKey('lastLoginAt') && !userData.containsKey('last_login_at')) {
+              userData['last_login_at'] = userData['lastLoginAt'];
+              userData.remove('lastLoginAt');
+            }
+            if (userData.containsKey('createdAt') && !userData.containsKey('created_at')) {
+              userData['created_at'] = userData['createdAt'];
+              userData.remove('createdAt');
+            }
+            if (userData.containsKey('updatedAt') && !userData.containsKey('updated_at')) {
+              userData['updated_at'] = userData['updatedAt'];
+              userData.remove('updatedAt');
+            }
+          }
+          
+          final authResponse = AuthResponse.fromJson(data);
           await _saveAuthData(authResponse);
           return authResponse;
-        } catch (parseError) {
+        } catch (parseError, stackTrace) {
           debugPrint('❌ Error parseando JSON: $parseError');
+          debugPrint('❌ Stack trace: $stackTrace');
           debugPrint('❌ Datos recibidos: ${response.data}');
           throw AuthException('Error parseando respuesta del servidor: $parseError');
         }

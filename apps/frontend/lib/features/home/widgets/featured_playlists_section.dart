@@ -1,0 +1,218 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../../../core/providers/home_provider.dart';
+import '../../../core/models/playlist_model.dart';
+import 'featured_playlist_card.dart';
+
+class FeaturedPlaylistsSection extends ConsumerWidget {
+  const FeaturedPlaylistsSection({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final featuredPlaylists = ref.watch(featuredPlaylistsProvider);
+    final isLoading = ref.watch(isLoadingProvider);
+
+    if (isLoading) {
+      return _buildLoadingSection();
+    }
+
+    if (featuredPlaylists.isEmpty) {
+      return _buildEmptySection();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Título de la sección
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Playlists Destacadas',
+                style: GoogleFonts.inter(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  decoration: TextDecoration.none,
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  // TODO: Navegar a vista de todas las playlists
+                },
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.white.withValues(alpha: 0.8),
+                ),
+                child: Text(
+                  'Ver todas',
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    color: Colors.white.withValues(alpha: 0.8),
+                    decoration: TextDecoration.none,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        
+        const SizedBox(height: 16),
+        
+        // Lista horizontal de playlists
+        SizedBox(
+          height: 240,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            itemCount: featuredPlaylists.length,
+            itemBuilder: (context, index) {
+              final featuredPlaylist = featuredPlaylists[index];
+              return FeaturedPlaylistCard(
+                featuredPlaylist: featuredPlaylist,
+                onTap: () {
+                  _onPlaylistTap(context, featuredPlaylist.playlist);
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLoadingSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Playlists Destacadas',
+          style: GoogleFonts.inter(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            decoration: TextDecoration.none,
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 240,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: 3,
+            itemBuilder: (context, index) {
+              return Container(
+                width: 160,
+                margin: const EdgeInsets.only(right: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 160,
+                      height: 160,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      height: 16,
+                      width: 120,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 12,
+                      width: 100,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmptySection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Playlists Destacadas',
+          style: GoogleFonts.inter(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            decoration: TextDecoration.none,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Center(
+            child: Column(
+              children: [
+                Icon(
+                  Icons.playlist_play,
+                  size: 48,
+                  color: Colors.white.withValues(alpha: 0.5),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'No hay playlists destacadas',
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    color: Colors.white.withValues(alpha: 0.7),
+                    decoration: TextDecoration.none,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Descubre nuevas playlists más tarde',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: Colors.white.withValues(alpha: 0.5),
+                    decoration: TextDecoration.none,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _onPlaylistTap(BuildContext context, Playlist playlist) {
+    // TODO: Navegar a detalles de la playlist
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Navegando a ${playlist.name ?? "Playlist"}'),
+        backgroundColor: const Color(0xFF667eea),
+      ),
+    );
+  }
+}
+

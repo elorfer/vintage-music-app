@@ -10,35 +10,24 @@ class AppConfig {
   static String _resolveBaseUrl() {
     final rawBaseUrl = String.fromEnvironment(
       'API_BASE_URL',
-      defaultValue: 'http://192.168.1.6:3000/api/v1',
+      defaultValue: 'http://10.0.2.2:3000',
     );
 
     try {
       final uri = Uri.parse(rawBaseUrl);
+      // Siempre agregar api/v1 al final
       final segments = <String>[
         for (final segment in uri.pathSegments)
           if (segment.isNotEmpty) segment,
       ];
-
-      if (segments.length >= 2 &&
-          segments[segments.length - 2] == 'api' &&
-          segments.last == 'v1') {
-        return _removeTrailingSlash(
-          uri.replace(pathSegments: segments).toString(),
-        );
-      }
-
-      if (segments.isNotEmpty && segments.last == 'api') {
-        segments.add('v1');
-      } else {
-        segments.addAll(['api', 'v1']);
-      }
+      
+      segments.addAll(['api', 'v1']);
 
       return _removeTrailingSlash(
         uri.replace(pathSegments: segments).toString(),
       );
     } catch (_) {
-      return 'http://192.168.1.6:3000/api/v1';
+      return 'http://10.0.2.2:3000/api/v1';
     }
   }
 

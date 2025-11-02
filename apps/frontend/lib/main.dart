@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'core/providers/auth_provider.dart';
 import 'features/auth/screens/login_screen.dart';
-import 'features/home/screens/home_screen.dart';
+import 'core/navigation/main_navigation.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,15 +54,15 @@ class VintageMusicApp extends ConsumerWidget {
       home: _buildHome(authState),
       routes: {
         '/login': (context) => const LoginScreen(),
-        '/home': (context) => const HomeScreen(),
+        '/home': (context) => const MainNavigation(),
       },
     );
   }
 
   Widget _buildHome(AuthState authState) {
-    // Si está autenticado, mostrar home
+    // Si está autenticado, mostrar navegación principal
     if (authState.isAuthenticated && authState.user != null) {
-      return const HomeScreen();
+      return const MainNavigation();
     }
 
     // Si está cargando, mostrar splash simple

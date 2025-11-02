@@ -17,13 +17,17 @@ async function bootstrap() {
   // CORS
   app.enableCors({
     origin: [
-      'http://localhost:3001', // Admin panel
+      'http://localhost:3001', // Admin panel (alternativo)
+      'http://localhost:3002', // Admin panel (puerto principal)
       'http://localhost:3000', // Backend
       'http://localhost:8080', // Flutter web
       'http://localhost:8081', // Flutter web alternativo
       'http://localhost:8082', // Flutter web alternativo
       'http://127.0.0.1:8080', // Flutter web localhost alternativo
       'http://127.0.0.1:8081', // Flutter web localhost alternativo
+      'http://127.0.0.1:3002', // Admin panel localhost
+      'http://10.0.2.2:3000', // Android emulator
+      'http://10.0.2.2:8080', // Android emulator Flutter
     ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],

@@ -71,6 +71,7 @@ class UserProfileCard extends StatelessWidget {
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: Colors.grey[800],
+                        decoration: TextDecoration.none,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -79,6 +80,7 @@ class UserProfileCard extends StatelessWidget {
                       style: GoogleFonts.inter(
                         fontSize: 14,
                         color: Colors.grey[600],
+                        decoration: TextDecoration.none,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -99,6 +101,7 @@ class UserProfileCard extends StatelessWidget {
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
                               color: _getRoleColor(user.role),
+                              decoration: TextDecoration.none,
                             ),
                           ),
                         ),
@@ -118,6 +121,7 @@ class UserProfileCard extends StatelessWidget {
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
                               color: _getSubscriptionColor(user.subscriptionStatus),
+                              decoration: TextDecoration.none,
                             ),
                           ),
                         ),
@@ -250,6 +254,7 @@ class _StatItem extends StatelessWidget {
             fontSize: 16,
             fontWeight: FontWeight.bold,
             color: Colors.grey[800],
+            decoration: TextDecoration.none,
           ),
         ),
         Text(
@@ -257,6 +262,7 @@ class _StatItem extends StatelessWidget {
           style: GoogleFonts.inter(
             fontSize: 12,
             color: Colors.grey[600],
+            decoration: TextDecoration.none,
           ),
         ),
       ],

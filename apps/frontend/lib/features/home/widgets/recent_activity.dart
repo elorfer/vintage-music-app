@@ -31,6 +31,7 @@ class RecentActivity extends StatelessWidget {
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: Colors.grey[800],
+                  decoration: TextDecoration.none,
                 ),
               ),
               TextButton(
@@ -47,6 +48,7 @@ class RecentActivity extends StatelessWidget {
                     fontSize: 14,
                     color: const Color(0xFF667eea),
                     fontWeight: FontWeight.w500,
+                    decoration: TextDecoration.none,
                   ),
                 ),
               ),
@@ -126,6 +128,7 @@ class _ActivityItem extends StatelessWidget {
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                   color: Colors.grey[800],
+                  decoration: TextDecoration.none,
                 ),
               ),
               const SizedBox(height: 2),
@@ -134,6 +137,7 @@ class _ActivityItem extends StatelessWidget {
                 style: GoogleFonts.inter(
                   fontSize: 12,
                   color: Colors.grey[600],
+                  decoration: TextDecoration.none,
                 ),
               ),
             ],
@@ -144,6 +148,7 @@ class _ActivityItem extends StatelessWidget {
           style: GoogleFonts.inter(
             fontSize: 12,
             color: Colors.grey[500],
+            decoration: TextDecoration.none,
           ),
         ),
       ],
