@@ -4,9 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/home_provider.dart';
-import '../widgets/user_profile_card.dart';
-import '../widgets/quick_actions.dart';
-import '../widgets/recent_activity.dart';
 import '../widgets/featured_artists_section.dart';
 import '../widgets/featured_songs_section.dart';
 import '../widgets/featured_playlists_section.dart';
@@ -80,30 +77,6 @@ class HomeScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
-              ),
-
-              const SizedBox(height: 32),
-
-              // Tarjeta de perfil del usuario
-              FadeInUp(
-                duration: const Duration(milliseconds: 800),
-                child: UserProfileCard(user: authState.user!),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Acciones rápidas
-              FadeInUp(
-                duration: const Duration(milliseconds: 1000),
-                child: QuickActions(),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Actividad reciente
-              FadeInUp(
-                duration: const Duration(milliseconds: 1200),
-                child: RecentActivity(),
               ),
 
               const SizedBox(height: 32),
