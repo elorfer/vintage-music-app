@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { signIn } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { signIn, useSession } from 'next-auth/react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import { MusicalNoteIcon, EyeIcon, EyeSlashIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 
@@ -12,38 +12,87 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { data: session, status } = useSession();
+
+  useEffect(() => {
+    // Si ya hay sesión, redirigir al dashboard
+    if (status === 'authenticated' && session) {
+      router.push('/dashboard');
+      return;
+    }
+
+    // Mostrar error si viene de la ruta de error de NextAuth
+    const error = searchParams.get('error');
+    if (error === 'Configuration') {
+      toast.error('Error de configuración. Verifica NEXTAUTH_SECRET y NEXTAUTH_URL');
+      console.error('Error de configuración de NextAuth. Verifica las variables de entorno.');
+    }
+  }, [session, status, router, searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      // Credenciales de prueba para desarrollo
-      if (email === 'admin@vintagemusic.com' && password === 'admin123') {
-        // Simular login exitoso para desarrollo
-        toast.success('Inicio de sesión exitoso');
-        setTimeout(() => {
-          router.push('/dashboard');
-        }, 1000);
-        return;
-      }
-
-      // Para otras credenciales, intentar con NextAuth
+      // Usar NextAuth para todas las credenciales (incluyendo las de desarrollo)
       const result = await signIn('credentials', {
         email,
         password,
         redirect: false,
+        callbackUrl: '/dashboard',
       });
 
       if (result?.error) {
-        toast.error('Credenciales inválidas');
-      } else {
+        if (result.error === 'Configuration') {
+          toast.error('Error de configuración. Verifica las variables de entorno.');
+          console.error('Error de configuración de NextAuth. Verifica NEXTAUTH_SECRET y NEXTAUTH_URL');
+        } else if (result.error === 'CredentialsSignin') {
+          toast.error('Credenciales inválidas');
+        } else {
+          toast.error(`Error: ${result.error}`);
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      console.log('[Login] Resultado de signIn:', result);
+      
+      if (result?.ok || result?.url) {
         toast.success('Inicio de sesión exitoso');
-        router.push('/dashboard');
+        console.log('[Login] Login exitoso, esperando sesión...');
+        
+        // Esperar a que NextAuth establezca la sesión antes de redirigir
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Verificar que la sesión esté lista antes de redirigir
+        try {
+          const sessionResponse = await fetch('/api/auth/session');
+          const sessionData = await sessionResponse.json();
+          console.log('[Login] Sesión verificada:', sessionData);
+          
+          if (sessionData && sessionData.user) {
+            console.log('[Login] Sesión válida, redirigiendo al dashboard');
+            // Usar window.location para una redirección completa que force la recarga de la sesión
+            window.location.href = '/dashboard';
+          } else {
+            console.error('[Login] Sesión no válida después del login');
+            toast.error('Error: No se pudo establecer la sesión');
+            setIsLoading(false);
+          }
+        } catch (sessionError) {
+          console.error('[Login] Error al verificar sesión:', sessionError);
+          // Intentar redirigir de todas formas
+          window.location.href = '/dashboard';
+        }
+      } else {
+        console.error('[Login] Error en login:', result);
+        toast.error('Error al iniciar sesión');
+        setIsLoading(false);
       }
     } catch (error) {
+      console.error('Error en login:', error);
       toast.error('Error al iniciar sesión');
-    } finally {
       setIsLoading(false);
     }
   };

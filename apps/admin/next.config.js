@@ -14,8 +14,9 @@ const nextConfig = {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
     return [
       {
-        source: '/api/:path*',
-        destination: `${apiUrl}/api/:path*`,
+        // Excluir las rutas de NextAuth del rewrite
+        source: '/api/v1/:path*',
+        destination: `${apiUrl}/api/v1/:path*`,
       },
     ];
   },

@@ -7,12 +7,19 @@ export default withAuth(
   {
     callbacks: {
       authorized: ({ token, req }) => {
+        const pathname = req.nextUrl.pathname;
+        
         // Permitir acceso a la página de login sin token
-        if (req.nextUrl.pathname === '/login') {
+        if (pathname === '/login') {
           return true;
         }
         
-        // Requerir token para todas las demás rutas
+        // Permitir acceso a las rutas de NextAuth sin token (sesión, callback, etc.)
+        if (pathname.startsWith('/api/auth/')) {
+          return true;
+        }
+        
+        // Requerir token para todas las demás rutas protegidas
         return !!token;
       },
     },
@@ -20,7 +27,8 @@ export default withAuth(
 );
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/api/:path*'],
+  // Solo proteger rutas específicas, NO todas las rutas /api
+  matcher: ['/dashboard/:path*'],
 };
 
 
