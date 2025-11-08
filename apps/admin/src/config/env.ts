@@ -69,6 +69,22 @@ export interface Config {
   };
 }
 
+const normalizeApiBaseUrl = (url?: string) => {
+  const fallback = 'http://localhost:3000';
+  const rawUrl = (url && url.trim().length > 0 ? url : fallback).trim();
+  const trimmed = rawUrl.replace(/\/+$/, '');
+
+  if (/\/api\/v\d+$/i.test(trimmed)) {
+    return trimmed;
+  }
+
+  if (/\/api$/i.test(trimmed)) {
+    return `${trimmed}/v1`;
+  }
+
+  return `${trimmed}/api/v1`;
+};
+
 const getConfig = (): Config => {
   const nodeEnv = process.env.NODE_ENV || 'development';
   const isDevelopment = nodeEnv === 'development';
@@ -81,8 +97,8 @@ const getConfig = (): Config => {
     },
     
     api: {
-      baseUrl: process.env.API_BASE_URL || 'http://localhost:3000/api/v1',
-      publicUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1',
+      baseUrl: normalizeApiBaseUrl(process.env.API_BASE_URL),
+      publicUrl: normalizeApiBaseUrl(process.env.NEXT_PUBLIC_API_URL),
     },
     
     database: {

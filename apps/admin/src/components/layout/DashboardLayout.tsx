@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -14,6 +14,7 @@ import {
   Bars3Icon,
   XMarkIcon,
   ArrowRightOnRectangleIcon,
+  ChevronDownIcon,
 } from '@heroicons/react/24/outline';
 
 interface DashboardLayoutProps {
@@ -32,12 +33,33 @@ const navigation = [
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
   const { data: session } = useSession();
   const pathname = usePathname();
 
   const handleSignOut = () => {
-    signOut({ callbackUrl: '/login' });
+    signOut({ callbackUrl: '/login', redirect: true });
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('access_token');
+    }
   };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+
+    if (menuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [menuOpen]);
 
   return (
     <div className="min-h-screen bg-warm-50">
@@ -129,26 +151,46 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
             <div className="flex flex-1" />
             <div className="flex items-center gap-x-4 lg:gap-x-6">
-              <div className="flex items-center gap-x-2">
-                <div className="h-8 w-8 bg-vintage-100 rounded-full flex items-center justify-center">
-                  <span className="text-sm font-medium text-vintage-700">
-                    {session?.user?.name?.charAt(0)}
-                  </span>
-                </div>
-                <div className="hidden lg:block">
-                  <p className="text-sm font-medium text-warm-900">
-                    {session?.user?.name}
-                  </p>
-                  <p className="text-xs text-warm-500">Administrador</p>
-                </div>
+              <div className="relative" ref={menuRef}>
+                <button
+                  onClick={() => setMenuOpen((prev) => !prev)}
+                  className="flex items-center space-x-2 rounded-full bg-white border border-warm-200 px-3 py-1.5 shadow-sm hover:border-vintage-500 transition-colors"
+                >
+                  <div className="h-8 w-8 bg-vintage-100 rounded-full flex items-center justify-center">
+                    <span className="text-sm font-semibold text-vintage-700">
+                      {session?.user?.name?.charAt(0) ?? 'A'}
+                    </span>
+                  </div>
+                  <div className="hidden lg:block text-left">
+                    <p className="text-xs font-medium text-warm-900 leading-tight">
+                      {session?.user?.name ?? 'Administrador'}
+                    </p>
+                    <p className="text-[11px] text-warm-500 leading-tight">
+                      {session?.user?.email ?? ''}
+                    </p>
+                  </div>
+                  <ChevronDownIcon className="h-4 w-4 text-warm-400" />
+                </button>
+                {menuOpen && (
+                  <div className="absolute right-0 mt-2 w-48 rounded-lg border border-warm-200 bg-white shadow-lg py-1 z-50">
+                    <div className="px-4 py-2 border-b border-warm-100">
+                      <p className="text-xs font-semibold text-warm-900">
+                        {session?.user?.name ?? 'Administrador'}
+                      </p>
+                      <p className="text-[11px] text-warm-500 truncate">
+                        {session?.user?.email ?? ''}
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleSignOut}
+                      className="w-full px-4 py-2 text-sm text-left text-warm-600 hover:bg-vintage-50 flex items-center gap-2"
+                    >
+                      <ArrowRightOnRectangleIcon className="h-4 w-4" />
+                      Cerrar sesión
+                    </button>
+                  </div>
+                )}
               </div>
-              <button
-                onClick={handleSignOut}
-                className="text-warm-400 hover:text-warm-600"
-                title="Cerrar sesión"
-              >
-                <ArrowRightOnRectangleIcon className="h-5 w-5" />
-              </button>
             </div>
           </div>
         </div>

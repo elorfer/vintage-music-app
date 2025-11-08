@@ -1,9 +1,25 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const normalizeApiBaseUrl = (url?: string) => {
+  const fallback = 'http://localhost:3000';
+  const rawUrl = (url && url.trim().length > 0 ? url : fallback).trim();
+  const trimmed = rawUrl.replace(/\/+$/, '');
+
+  if (/\/api\/v\d+$/i.test(trimmed)) {
+    return trimmed;
+  }
+
+  if (/\/api$/i.test(trimmed)) {
+    return `${trimmed}/v1`;
+  }
+
+  return `${trimmed}/api/v1`;
+};
+
+const API_BASE_URL = normalizeApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
 
 export const api = axios.create({
-  baseURL: `${API_BASE_URL}/api/v1`,
+  baseURL: API_BASE_URL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -31,10 +47,9 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token expirado o inválido
+      // Token expirado o inválido; limpiar el token local y dejar que la vista maneje el error
       if (typeof window !== 'undefined') {
         localStorage.removeItem('access_token');
-        window.location.href = '/login';
       }
     }
     return Promise.reject(error);
