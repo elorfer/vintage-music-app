@@ -132,6 +132,9 @@ export class UsersService {
 
   async remove(id: string): Promise<void> {
     const user = await this.findOne(id);
+    if (user.artist) {
+      await this.artistRepository.delete({ id: user.artist.id });
+    }
     await this.userRepository.remove(user);
   }
 

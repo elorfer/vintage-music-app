@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import { apiClient } from '@/lib/api';
 import {
   ArtistSummary,
+  CreateUserInput,
   UpdateUserInput,
   UseUsersParams,
   UserModel,
@@ -113,6 +114,26 @@ export const useDeleteUser = () => {
     {
       onSuccess: () => {
         toast.success('Usuario eliminado');
+        queryClient.invalidateQueries(USERS_QUERY_KEY);
+      },
+      onError: (error) => {
+        toast.error(extractErrorMessage(error));
+      },
+    }
+  );
+};
+
+export const useCreateUser = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation(
+    async (data: CreateUserInput) => {
+      const response = await apiClient.createUser(data);
+      return mapUser(response.data.user);
+    },
+    {
+      onSuccess: () => {
+        toast.success('Usuario creado correctamente');
         queryClient.invalidateQueries(USERS_QUERY_KEY);
       },
       onError: (error) => {

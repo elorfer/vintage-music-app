@@ -40,6 +40,16 @@ export interface UsersResponse {
   total: number;
 }
 
+export interface CreateUserInput {
+  email: string;
+  username: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  role: UserRole;
+  stageName?: string;
+}
+
 export interface UseUsersParams {
   page?: number;
   limit?: number;

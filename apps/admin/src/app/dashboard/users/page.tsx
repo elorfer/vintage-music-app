@@ -9,12 +9,24 @@ import {
   HomeIcon,
   MusicalNoteIcon,
   ShieldCheckIcon,
+  UserPlusIcon,
+  XMarkIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline';
 
-import { useUsers } from '@/hooks/useUsers';
+import { useCreateUser, useDeactivateUser, useActivateUser, useUsers } from '@/hooks/useUsers';
 import type { UserModel } from '@/types/user';
 
 const PAGE_SIZE = 10;
+const DEFAULT_CREATE_FORM = {
+  email: '',
+  username: '',
+  password: '',
+  firstName: '',
+  lastName: '',
+  role: 'user' as 'admin' | 'artist' | 'user',
+  stageName: '',
+};
 
 const roleLabels: Record<string, { label: string; badge: string; text: string }> = {
   admin: { label: 'Administrador', badge: 'bg-purple-100 text-purple-700', text: 'Administrador' },
@@ -31,12 +43,70 @@ export default function UsersPage() {
   const { data, isLoading, isFetching, refetch } = useUsers({ page, limit: PAGE_SIZE, enabled: true });
   const users = data?.users ?? [];
 
+  const { mutateAsync: createUser, isLoading: isCreating } = useCreateUser();
+  const { mutateAsync: deactivateUser } = useDeactivateUser();
+  const { mutateAsync: activateUser } = useActivateUser();
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createForm, setCreateForm] = useState(DEFAULT_CREATE_FORM);
+
   const navItems = [
     { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
     { name: 'Administrar usuarios', href: '/dashboard/users', icon: UsersIcon },
     { name: 'Gestionar canciones', href: '/dashboard/songs', icon: MusicalNoteIcon },
     { name: 'Aprobar contenido', href: '/dashboard/approvals', icon: ShieldCheckIcon },
   ];
+
+  const openCreateModal = () => {
+    setCreateForm(DEFAULT_CREATE_FORM);
+    setShowCreateModal(true);
+  };
+
+  const handleCreateUser = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    try {
+      await createUser({
+        ...createForm,
+        stageName: createForm.role === 'artist' ? createForm.stageName : undefined,
+      });
+      setShowCreateModal(false);
+      setCreateForm(DEFAULT_CREATE_FORM);
+    } catch {
+      // handled by hook
+    }
+  };
+
+  const handleDeactivateUser = async (user: UserModel) => {
+    if (!user.isActive) {
+      window.alert('El usuario ya está desactivado.');
+      return;
+    }
+
+    const confirmed = window.confirm(`¿Seguro que deseas desactivar a ${user.email}?`);
+    if (!confirmed) return;
+
+    try {
+      setUpdatingId(user.id);
+      await deactivateUser(user.id);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleActivateUser = async (user: UserModel) => {
+    if (user.isActive) {
+      window.alert('El usuario ya está activo.');
+      return;
+    }
+
+    try {
+      setUpdatingId(user.id);
+      await activateUser(user.id);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
 
   const filteredUsers = useMemo(() => {
     if (!search.trim()) return users;
@@ -68,6 +138,7 @@ export default function UsersPage() {
   };
 
   return (
+    <>
     <div className="min-h-screen bg-gray-100 flex">
       <aside className="hidden md:flex w-20 xl:w-64 flex-col bg-white border-r border-gray-200 py-6">
         <div className="flex flex-col items-center xl:items-start px-4 mb-8">
@@ -123,6 +194,13 @@ export default function UsersPage() {
                   <ArrowPathIcon className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
                   Actualizar
                 </button>
+                <button
+                  onClick={openCreateModal}
+                  className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-purple-700"
+                >
+                  <UserPlusIcon className="h-4 w-4" />
+                  Nuevo usuario
+                </button>
               </div>
             </div>
           </div>
@@ -163,18 +241,21 @@ export default function UsersPage() {
                     <th className="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                       Último acceso
                     </th>
+                    <th className="py-3 px-4 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">
+                      Acciones
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {isLoading ? (
                     <tr>
-                      <td colSpan={5} className="py-12 text-center text-sm text-gray-500">
+                      <td colSpan={6} className="py-12 text-center text-sm text-gray-500">
                         Cargando usuarios...
                       </td>
                     </tr>
                   ) : filteredUsers.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="py-12 text-center text-sm text-gray-500">
+                      <td colSpan={6} className="py-12 text-center text-sm text-gray-500">
                         No se encontraron usuarios.
                       </td>
                     </tr>
@@ -223,6 +304,27 @@ export default function UsersPage() {
                           <td className="py-4 px-4 text-sm text-gray-500">
                             {user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString('es-ES') : 'Nunca'}
                           </td>
+                          <td className="py-4 px-4 text-right">
+                            {user.isActive ? (
+                              <button
+                                onClick={() => handleDeactivateUser(user)}
+                                className="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-500 transition hover:border-yellow-300 hover:text-yellow-600 disabled:cursor-not-allowed disabled:opacity-60"
+                                disabled={updatingId === user.id}
+                              >
+                                <ShieldCheckIcon className={`h-4 w-4 ${updatingId === user.id ? 'animate-spin' : ''}`} />
+                                <span className="ml-1">Desactivar</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleActivateUser(user)}
+                                className="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-500 transition hover:border-green-300 hover:text-green-600 disabled:cursor-not-allowed disabled:opacity-60"
+                                disabled={updatingId === user.id}
+                              >
+                                <ShieldCheckIcon className={`h-4 w-4 ${updatingId === user.id ? 'animate-spin' : ''}`} />
+                                <span className="ml-1">Activar</span>
+                              </button>
+                            )}
+                          </td>
                         </tr>
                       );
                     })
@@ -256,6 +358,163 @@ export default function UsersPage() {
         </main>
       </div>
     </div>
+    {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm px-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Crear nuevo usuario</h2>
+                <p className="text-sm text-gray-500">Registra un nuevo usuario y define su rol dentro del sistema.</p>
+              </div>
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="rounded-full p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+                aria-label="Cerrar"
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateUser} className="px-6 py-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">
+                    Nombre
+                  </label>
+                  <input
+                    type="text"
+                    value={createForm.firstName}
+                    onChange={(event) =>
+                      setCreateForm((prev) => ({ ...prev, firstName: event.target.value }))
+                    }
+                    required
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                    placeholder="Juan"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">
+                    Apellido
+                  </label>
+                  <input
+                    type="text"
+                    value={createForm.lastName}
+                    onChange={(event) =>
+                      setCreateForm((prev) => ({ ...prev, lastName: event.target.value }))
+                    }
+                    required
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                    placeholder="Pérez"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">
+                    Correo electrónico
+                  </label>
+                  <input
+                    type="email"
+                    value={createForm.email}
+                    onChange={(event) =>
+                      setCreateForm((prev) => ({ ...prev, email: event.target.value }))
+                    }
+                    required
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                    placeholder="usuario@vintagemusic.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">
+                    Usuario
+                  </label>
+                  <input
+                    type="text"
+                    value={createForm.username}
+                    onChange={(event) =>
+                      setCreateForm((prev) => ({ ...prev, username: event.target.value }))
+                    }
+                    required
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                    placeholder="usuario123"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">
+                    Contraseña
+                  </label>
+                  <input
+                    type="password"
+                    value={createForm.password}
+                    onChange={(event) =>
+                      setCreateForm((prev) => ({ ...prev, password: event.target.value }))
+                    }
+                    required
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                    placeholder="••••••••"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">
+                    Rol
+                  </label>
+                  <select
+                    value={createForm.role}
+                    onChange={(event) =>
+                      setCreateForm((prev) => ({ ...prev, role: event.target.value as 'admin' | 'artist' | 'user' }))
+                    }
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                  >
+                    <option value="admin">Administrador</option>
+                    <option value="artist">Artista</option>
+                    <option value="user">Usuario</option>
+                  </select>
+                </div>
+              </div>
+
+              {createForm.role === 'artist' && (
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">
+                    Nombre artístico
+                  </label>
+                  <input
+                    type="text"
+                    value={createForm.stageName}
+                    onChange={(event) =>
+                      setCreateForm((prev) => ({ ...prev, stageName: event.target.value }))
+                    }
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                    placeholder="Ej. The Vintage"
+                  />
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 transition hover:border-gray-300 hover:text-gray-700"
+                  disabled={isCreating}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCreating}
+                  className="inline-flex items-center rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:bg-purple-400"
+                >
+                  {isCreating ? 'Creando...' : 'Crear usuario'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 

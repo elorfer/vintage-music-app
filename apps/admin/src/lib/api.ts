@@ -72,6 +72,8 @@ export const apiClient = {
   
   getUser: (id: string) => api.get(`/users/${id}`),
   
+  createUser: (data: any) => api.post('/auth/register', data),
+  
   updateUser: (id: string, data: any) => api.patch(`/users/${id}`, data),
   
   deleteUser: (id: string) => api.delete(`/users/${id}`),
