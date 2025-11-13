@@ -35,7 +35,33 @@ import { dataSourceOptions } from './database/data-source';
       imports: [ConfigModule],
       useFactory: (configService: ConfigService): TypeOrmModuleOptions => {
         const isProduction = configService.get<string>('NODE_ENV') === 'production';
+        const sslEnv = configService.get<string>('DB_SSL');
+        const sslRejectEnv = configService.get<string>('DB_SSL_REJECT_UNAUTHORIZED');
         const databaseUrl = configService.get<string>('DATABASE_URL');
+        
+        // Detectar si DATABASE_URL contiene parámetros SSL
+        const urlHasSsl = databaseUrl?.includes('sslmode=') || databaseUrl?.includes('ssl=');
+        
+        // Determinar si SSL debe estar habilitado
+        let sslEnabled = false;
+        if (typeof sslEnv === 'string') {
+          sslEnabled = ['1', 'true', 'yes', 'on'].includes(sslEnv.toLowerCase());
+        } else if (urlHasSsl) {
+          // Si la URL tiene parámetros SSL, habilitar SSL
+          sslEnabled = true;
+        } else {
+          sslEnabled = isProduction;
+        }
+        
+        // Determinar si se debe rechazar certificados no autorizados
+        // Por defecto, si DB_SSL_REJECT_UNAUTHORIZED no está definido, usar false (aceptar certificados autofirmados)
+        let rejectUnauthorized = false;
+        if (typeof sslRejectEnv === 'string') {
+          const sslRejectLower = sslRejectEnv.toLowerCase();
+          rejectUnauthorized = ['1', 'true', 'yes', 'on'].includes(sslRejectLower);
+        }
+        
+        const sslOptions = sslEnabled ? { rejectUnauthorized } : false;
 
         const baseOptions: TypeOrmModuleOptions = {
           type: 'postgres',
@@ -43,13 +69,26 @@ import { dataSourceOptions } from './database/data-source';
           autoLoadEntities: true,
           synchronize: !isProduction,
           logging: !isProduction,
+          connectTimeoutMS: 30000, // 30 segundos de timeout
+          extra: {
+            connectionTimeoutMillis: 30000,
+          },
         };
 
         if (databaseUrl) {
+          // Si la URL tiene parámetros SSL, removerlos y usar la configuración de ssl del objeto
+          let cleanUrl = databaseUrl;
+          if (urlHasSsl) {
+            // Remover parámetros SSL de la URL para evitar conflictos
+            cleanUrl = databaseUrl.replace(/[?&]sslmode=[^&]*/gi, '').replace(/[?&]ssl=[^&]*/gi, '');
+            // Si quedó un ? al final sin parámetros, removerlo
+            cleanUrl = cleanUrl.replace(/\?$/, '');
+          }
+          
           return {
             ...baseOptions,
-            url: databaseUrl,
-            ssl: isProduction ? { rejectUnauthorized: false } : false,
+            url: cleanUrl,
+            ssl: sslOptions,
           };
         }
 
@@ -60,7 +99,7 @@ import { dataSourceOptions } from './database/data-source';
           username: configService.get<string>('DB_USERNAME') ?? 'vintage_user',
           password: configService.get<string>('DB_PASSWORD') ?? 'vintage_password_2024',
           database: configService.get<string>('DB_DATABASE') ?? 'vintage_music',
-          ssl: isProduction ? { rejectUnauthorized: false } : false,
+          ssl: sslOptions,
         };
       },
       inject: [ConfigService],

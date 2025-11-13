@@ -162,6 +162,27 @@ La app debería abrirse automáticamente en tu emulador/dispositivo.
 
 ---
 
+## 🧭 Navegación en la app móvil
+
+La app usa **GoRouter + Riverpod** para manejar todas las rutas. El archivo principal está en `apps/frontend/lib/core/navigation/app_router.dart`.
+
+- Rutas disponibles:
+  - `/splash`: pantalla de carga mientras se inicializa la sesión.
+  - `/login`: formulario de inicio de sesión.
+  - `/register`: registro de nuevos usuarios.
+  - `/home`: `MainNavigation` con barra inferior y secciones principales.
+- Redirecciones automáticas:
+  - Usuarios no autenticados siempre son enviados a `/login`.
+  - Usuarios autenticados saltan a `/home` y no pueden volver manualmente a `/login` o `/register`.
+  - Mientras el estado de autenticación no está inicializado se muestra `/splash`.
+- Para navegar dentro de widgets usa:
+  - `context.go('/ruta')` para reemplazar la ruta actual.
+  - `context.push('/ruta')` si necesitas apilar rutas (por ejemplo, desde login a registro).
+
+> Cualquier cambio futuro en las rutas debe declararse en `goRouterProvider` para mantener la lógica centralizada.
+
+---
+
 ## 🚀 INICIAR TODO JUNTO
 
 Si quieres iniciar **backend y frontend juntos** desde la raíz:

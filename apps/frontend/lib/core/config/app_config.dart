@@ -8,13 +8,19 @@ class AppConfig {
   static final String baseUrl = _resolveBaseUrl();
 
   static String _resolveBaseUrl() {
+    // Intentar obtener la URL desde variables de entorno
     final rawBaseUrl = String.fromEnvironment(
       'API_BASE_URL',
-      defaultValue: 'http://10.0.2.2:3000',
+      defaultValue: '',
     );
 
+    // Si no hay URL desde environment, usar la URL de producción por defecto
+    final urlToUse = rawBaseUrl.isEmpty 
+        ? 'http://backend-alb-1038609925.us-east-1.elb.amazonaws.com'
+        : rawBaseUrl;
+
     try {
-      final uri = Uri.parse(rawBaseUrl);
+      final uri = Uri.parse(urlToUse);
       // Siempre agregar api/v1 al final
       final segments = <String>[
         for (final segment in uri.pathSegments)
@@ -23,11 +29,20 @@ class AppConfig {
       
       segments.addAll(['api', 'v1']);
 
-      return _removeTrailingSlash(
+      final finalUrl = _removeTrailingSlash(
         uri.replace(pathSegments: segments).toString(),
       );
-    } catch (_) {
-      return 'http://10.0.2.2:3000/api/v1';
+      
+      // Debug: imprimir la URL que se está usando
+      print('🔗 API Base URL configurada: $finalUrl');
+      print('🔗 URL raw desde environment: $rawBaseUrl');
+      print('🔗 URL final usada: $urlToUse');
+      
+      return finalUrl;
+    } catch (e) {
+      print('⚠️ Error al parsear URL, usando producción por defecto: $e');
+      // Usar URL de producción por defecto en lugar de localhost
+      return 'http://backend-alb-1038609925.us-east-1.elb.amazonaws.com/api/v1';
     }
   }
 

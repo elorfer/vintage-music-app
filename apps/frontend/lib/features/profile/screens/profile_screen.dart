@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/providers/auth_provider.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -163,7 +164,7 @@ class ProfileScreen extends ConsumerWidget {
                           onPressed: () async {
                             await ref.read(authStateProvider.notifier).logout();
                             if (context.mounted) {
-                              Navigator.of(context).pushReplacementNamed('/login');
+                              context.go('/login');
                             }
                           },
                           child: Row(

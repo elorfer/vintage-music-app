@@ -11,11 +11,18 @@ import '../widgets/featured_playlists_section.dart';
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
+  String _getInitials(String? firstName, String? lastName) {
+    if (firstName == null && lastName == null) return 'U';
+    final firstInitial = firstName?.isNotEmpty == true ? firstName![0].toUpperCase() : '';
+    final lastInitial = lastName?.isNotEmpty == true ? lastName![0].toUpperCase() : '';
+    return (firstInitial + lastInitial).isEmpty ? 'U' : (firstInitial + lastInitial);
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authStateProvider);
-    final authNotifier = ref.read(authStateProvider.notifier);
-
+    final user = authState.user;
+    
     // Cargar datos cuando se construye la pantalla
     ref.watch(homeStateProvider);
 
@@ -36,43 +43,70 @@ class HomeScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Header con saludo
+              // Header con avatar y bienvenida
               FadeInDown(
                 duration: const Duration(milliseconds: 600),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '¡Hola!',
+                    // Avatar con inicial
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Colors.white.withValues(alpha: 0.9),
+                            Colors.white.withValues(alpha: 0.7),
+                          ],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          _getInitials(user?.firstName, user?.lastName),
                           style: GoogleFonts.inter(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: const Color(0xFF667eea),
                           ),
                         ),
-                        Text(
-                          authState.user?.firstName ?? 'Usuario',
-                          style: GoogleFonts.inter(
-                            fontSize: 18,
-                            color: Colors.white.withValues(alpha: 0.8),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                    IconButton(
-                      onPressed: () async {
-                        await authNotifier.logout();
-                        if (context.mounted) {
-                          Navigator.of(context).pushReplacementNamed('/login');
-                        }
-                      },
-                      icon: const Icon(
-                        Icons.logout,
-                        color: Colors.white,
-                        size: 24,
+                    const SizedBox(width: 16),
+                    // Texto de bienvenida
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Bienvenido',
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              color: Colors.white.withValues(alpha: 0.8),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            user?.firstName ?? 'Usuario',
+                            style: GoogleFonts.inter(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
                     ),
                   ],

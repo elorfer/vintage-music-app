@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/models/user_model.dart';
 import '../widgets/auth_text_field.dart';
 import '../widgets/auth_button.dart';
 import '../widgets/social_auth_button.dart';
 import '../widgets/role_selector.dart';
-import '../../home/screens/home_screen.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -49,17 +49,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     final authState = ref.watch(authStateProvider);
     final authNotifier = ref.read(authStateProvider.notifier);
 
-    // Escuchar cambios de autenticación
     ref.listen<AuthState>(authStateProvider, (previous, next) {
-      if (next.isAuthenticated && next.user != null) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-        );
-      }
-      if (next.error != null) {
+      final previousError = previous?.error;
+      final nextError = next.error;
+
+      if (nextError != null && nextError != previousError) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(next.error!),
+            content: Text(nextError),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -93,7 +90,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   child: Row(
                     children: [
                       IconButton(
-                        onPressed: () => Navigator.of(context).pop(),
+                        onPressed: () => context.go('/login'),
                         icon: const Icon(
                           Icons.arrow_back,
                           color: Colors.white,
@@ -470,7 +467,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                 ),
                               ),
                               TextButton(
-                                onPressed: () => Navigator.of(context).pop(),
+                                onPressed: () => context.go('/login'),
                                 child: Text(
                                   'Inicia sesión',
                                   style: GoogleFonts.inter(

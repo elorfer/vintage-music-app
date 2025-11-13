@@ -118,18 +118,18 @@ export class ErrorHandler {
     }
 
     // Log del error
-    if (appError.statusCode >= 500) {
-      logger.error(appError.message, appError.context || context, {
-        code: appError.code,
-        statusCode: appError.statusCode,
-        metadata: appError.metadata,
-      });
+    const statusCode = appError.statusCode ?? 500;
+
+    const logPayload = {
+      code: appError.code,
+      statusCode,
+      metadata: appError.metadata,
+    };
+
+    if (statusCode >= 500) {
+      logger.error(appError.message, appError.context || context, logPayload);
     } else {
-      logger.warn(appError.message, appError.context || context, {
-        code: appError.code,
-        statusCode: appError.statusCode,
-        metadata: appError.metadata,
-      });
+      logger.warn(appError.message, appError.context || context, logPayload);
     }
 
     return appError;

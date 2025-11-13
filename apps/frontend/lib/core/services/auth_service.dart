@@ -120,24 +120,42 @@ class AuthService {
   /// Verificar conectividad
   Future<bool> _checkConnectivity() async {
     try {
-      // Crear una instancia temporal de Dio con timeouts cortos
+      debugPrint('🔍 Verificando conectividad a: ${ApiConfig.baseUrl}');
+      
+      // Crear una instancia temporal de Dio con timeouts más largos
       final tempDio = Dio();
-      tempDio.options.connectTimeout = const Duration(seconds: 5);
-      tempDio.options.receiveTimeout = const Duration(seconds: 5);
+      tempDio.options.connectTimeout = const Duration(seconds: 15);
+      tempDio.options.receiveTimeout = const Duration(seconds: 15);
       
       // Intentar hacer una petición simple al backend para verificar conectividad
-      final response = await tempDio.get('${ApiConfig.baseUrl}/health');
+      // baseUrl ya incluye /api/v1, así que solo agregamos /health
+      final healthUrl = ApiConfig.baseUrl.endsWith('/') 
+          ? '${ApiConfig.baseUrl}health'
+          : '${ApiConfig.baseUrl}/health';
+      
+      debugPrint('🌐 Intentando conectar a: $healthUrl');
+      final response = await tempDio.get(healthUrl);
+      debugPrint('✅ Conectividad OK: ${response.statusCode}');
       return response.statusCode == 200;
     } catch (e) {
-      // Si no hay endpoint de health, intentar con el endpoint de login
+      debugPrint('❌ Error de conectividad: $e');
+      debugPrint('📍 URL intentada: ${ApiConfig.baseUrl}');
+      
+      // Si falla, intentar verificar conectividad de red básica
       try {
         final tempDio = Dio();
-        tempDio.options.connectTimeout = const Duration(seconds: 5);
-        tempDio.options.receiveTimeout = const Duration(seconds: 5);
+        tempDio.options.connectTimeout = const Duration(seconds: 15);
+        tempDio.options.receiveTimeout = const Duration(seconds: 15);
         
-        await tempDio.get('${ApiConfig.baseUrl}${ApiConfig.loginEndpoint}');
+        // Intentar con un endpoint que siempre existe
+        final testUrl = ApiConfig.baseUrl.endsWith('/')
+            ? '${ApiConfig.baseUrl}health'
+            : '${ApiConfig.baseUrl}/health';
+        final response = await tempDio.get(testUrl, options: Options(validateStatus: (status) => status! < 500));
+        debugPrint('✅ Conectividad OK (fallback): ${response.statusCode}');
         return true; // Si responde (aunque sea con error), hay conectividad
-      } catch (e) {
+      } catch (e2) {
+        debugPrint('❌ Error de conectividad (fallback): $e2');
         return false;
       }
     }
@@ -148,8 +166,11 @@ class AuthService {
     required String email,
     required String password,
   }) async {
-    if (!await _checkConnectivity()) {
-      throw AuthException('Sin conexión a internet');
+    // Verificar conectividad pero no bloquear si falla - intentar directamente
+    final hasConnectivity = await _checkConnectivity();
+    if (!hasConnectivity) {
+      debugPrint('⚠️ Verificación de conectividad falló, pero intentando login de todas formas...');
+      // No lanzar error aquí, intentar el login directamente
     }
 
     try {
@@ -188,13 +209,18 @@ class AuthService {
     UserRole? role,
     String? stageName,
   }) async {
-    if (!await _checkConnectivity()) {
-      throw AuthException('Sin conexión a internet');
+    // Verificar conectividad pero no bloquear si falla - intentar directamente
+    final hasConnectivity = await _checkConnectivity();
+    if (!hasConnectivity) {
+      debugPrint('⚠️ Verificación de conectividad falló, pero intentando registro de todas formas...');
+      // No lanzar error aquí, intentar el registro directamente
     }
 
     try {
       final url = '${ApiConfig.baseUrl}${ApiConfig.registerEndpoint}';
       debugPrint('🚀 Intentando registrar en: $url');
+      debugPrint('🔗 Base URL completa: ${ApiConfig.baseUrl}');
+      debugPrint('🔗 Endpoint: ${ApiConfig.registerEndpoint}');
       
       final response = await _dio.post(
         url,
@@ -312,8 +338,10 @@ class AuthService {
       throw AuthException('Usuario no autenticado');
     }
 
-    if (!await _checkConnectivity()) {
-      throw AuthException('Sin conexión a internet');
+    // Verificar conectividad pero no bloquear
+    final hasConnectivity = await _checkConnectivity();
+    if (!hasConnectivity) {
+      debugPrint('⚠️ Verificación de conectividad falló, pero intentando de todas formas...');
     }
 
     try {
@@ -340,8 +368,10 @@ class AuthService {
 
   /// Refrescar token
   Future<void> refreshToken() async {
-    if (!await _checkConnectivity()) {
-      throw AuthException('Sin conexión a internet');
+    // Verificar conectividad pero no bloquear
+    final hasConnectivity = await _checkConnectivity();
+    if (!hasConnectivity) {
+      debugPrint('⚠️ Verificación de conectividad falló, pero intentando de todas formas...');
     }
 
     try {
@@ -372,8 +402,10 @@ class AuthService {
       throw AuthException('Usuario no autenticado');
     }
 
-    if (!await _checkConnectivity()) {
-      throw AuthException('Sin conexión a internet');
+    // Verificar conectividad pero no bloquear
+    final hasConnectivity = await _checkConnectivity();
+    if (!hasConnectivity) {
+      debugPrint('⚠️ Verificación de conectividad falló, pero intentando de todas formas...');
     }
 
     try {
@@ -431,20 +463,30 @@ class AuthService {
 
   /// Manejar errores de Dio
   AuthException _handleDioError(DioException e) {
+    // Log detallado del error
+    debugPrint('❌ Error Dio: ${e.type}');
+    debugPrint('❌ Mensaje: ${e.message}');
+    debugPrint('❌ URL: ${e.requestOptions.uri}');
+    debugPrint('❌ Response: ${e.response?.statusCode} - ${e.response?.data}');
+    
     switch (e.type) {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
-        return AuthException('Tiempo de espera agotado. Verifica tu conexión.');
+        return AuthException('Tiempo de espera agotado. Verifica tu conexión a internet.');
       
       case DioExceptionType.connectionError:
         // Verificar si es un problema de DNS o conectividad
-        if (e.message?.contains('Failed host lookup') == true) {
-          return AuthException('No se puede conectar al servidor. Verifica tu internet y que el backend esté ejecutándose.');
+        debugPrint('❌ Error de conexión: ${e.message}');
+        if (e.message?.contains('Failed host lookup') == true || 
+            e.message?.contains('Unable to resolve host') == true) {
+          return AuthException('No se puede resolver el servidor. Verifica tu conexión a internet.');
         } else if (e.message?.contains('Connection refused') == true) {
-          return AuthException('El servidor no está disponible. Verifica que el backend esté ejecutándose en el puerto 3000.');
+          return AuthException('El servidor rechazó la conexión. Verifica que el backend esté ejecutándose.');
+        } else if (e.message?.contains('Network is unreachable') == true) {
+          return AuthException('Red no disponible. Verifica tu conexión a internet.');
         } else {
-          return AuthException('Error de conexión. Verifica tu internet.');
+          return AuthException('Error de conexión: ${e.message ?? "Desconocido"}. Verifica tu internet.');
         }
       
       case DioExceptionType.badResponse:

@@ -85,18 +85,17 @@ export const useUsers = ({ page = 1, limit = 10, enabled = true }: UseUsersParam
 export const useUpdateUser = () => {
   const queryClient = useQueryClient();
 
-  return useMutation(
-    async ({ id, data }: { id: string; data: UpdateUserInput }) => {
+  return useMutation<UserModel, unknown, { id: string; data: UpdateUserInput }>(
+    async ({ id, data }) => {
       const response = await apiClient.updateUser(id, data);
       return mapUser(response.data);
     },
     {
-      onSuccess: (user) => {
+      onSuccess: () => {
         toast.success('Usuario actualizado correctamente');
         queryClient.invalidateQueries(USERS_QUERY_KEY);
-        return user;
       },
-      onError: (error) => {
+      onError: (error: unknown) => {
         toast.error(extractErrorMessage(error));
       },
     }
