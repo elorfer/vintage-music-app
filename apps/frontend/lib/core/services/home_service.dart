@@ -530,6 +530,26 @@ class HomeService {
               AppLogger.playlist('HomeService: Parseando playlist $i: ${item['name']}');
             }
             
+            // Normalizar coverArtUrl antes de parsear (convertir localhost a 10.0.2.2)
+            final coverArtUrl = item['coverArtUrl'] ?? item['cover_art_url'];
+            if (coverArtUrl != null && coverArtUrl is String && coverArtUrl.isNotEmpty) {
+              if (kDebugMode) {
+                AppLogger.debug('HomeService: Portada raw de playlist $i: $coverArtUrl');
+              }
+              final normalizedCoverUrl = _normalizeCoverUrl(coverArtUrl);
+              if (normalizedCoverUrl != null && normalizedCoverUrl.isNotEmpty) {
+                item['coverArtUrl'] = normalizedCoverUrl;
+                item['cover_art_url'] = normalizedCoverUrl; // También normalizar snake_case por si acaso
+                if (kDebugMode) {
+                  AppLogger.debug('HomeService: Portada normalizada de playlist $i: $normalizedCoverUrl');
+                }
+              } else if (kDebugMode) {
+                AppLogger.warning('HomeService: Portada normalizada es null o vacía para playlist $i');
+              }
+            } else if (kDebugMode) {
+              AppLogger.debug('HomeService: Playlist $i no tiene coverArtUrl');
+            }
+            
             // Transformar el user de camelCase a snake_case si existe
             if (item.containsKey('user') && item['user'] != null) {
               final userData = item['user'] as Map<String, dynamic>;

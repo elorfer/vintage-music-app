@@ -10,6 +10,7 @@ import {
   StarIcon,
   XMarkIcon,
   ArrowPathIcon,
+  ListBulletIcon,
 } from '@heroicons/react/24/outline';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { toast } from 'react-hot-toast';
@@ -31,6 +32,7 @@ export default function FeaturedPage() {
     { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
     { name: 'Administrar usuarios', href: '/dashboard/users', icon: UsersIcon },
     { name: 'Gestionar canciones', href: '/dashboard/songs', icon: MusicalNoteIcon },
+    { name: 'Administrar Playlists', href: '/dashboard/playlists', icon: ListBulletIcon },
     { name: 'Contenido destacado', href: '/dashboard/featured', icon: StarIcon },
     { name: 'Aprobar contenido', href: '/dashboard/approvals', icon: ShieldCheckIcon },
   ];

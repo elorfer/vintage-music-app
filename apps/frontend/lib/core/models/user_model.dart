@@ -31,8 +31,8 @@ class User {
   final String id;
   final String email;
   final String username;
-  final String firstName;
-  final String lastName;
+  final String? firstName;
+  final String? lastName;
   final String? avatarUrl;
   final UserRole role;
   final SubscriptionStatus subscriptionStatus;
@@ -47,8 +47,8 @@ class User {
     required this.id,
     required this.email,
     required this.username,
-    required this.firstName,
-    required this.lastName,
+    this.firstName,
+    this.lastName,
     this.avatarUrl,
     required this.role,
     required this.subscriptionStatus,
@@ -97,7 +97,7 @@ class User {
     );
   }
 
-  String get fullName => '$firstName $lastName';
+  String get fullName => '${firstName ?? ''} ${lastName ?? ''}'.trim().isEmpty ? username : '${firstName ?? ''} ${lastName ?? ''}'.trim();
   String get displayName => username;
   bool get isArtist => role == UserRole.artist;
   bool get isAdmin => role == UserRole.admin;

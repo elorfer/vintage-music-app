@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class LibraryScreen extends ConsumerWidget {
@@ -54,7 +55,9 @@ class LibraryScreen extends ConsumerWidget {
                         icon: Icons.playlist_play,
                         title: 'Mis Playlists',
                         subtitle: '0 playlists',
-                        onTap: () {},
+                        onTap: () {
+                          context.push('/playlists');
+                        },
                       ),
                       _buildLibrarySection(
                         icon: Icons.download,

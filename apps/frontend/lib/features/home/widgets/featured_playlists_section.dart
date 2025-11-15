@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/providers/home_provider.dart';
 import '../../../core/models/playlist_model.dart';
@@ -41,7 +42,8 @@ class FeaturedPlaylistsSection extends ConsumerWidget {
               ),
               TextButton(
                 onPressed: () {
-                  // TODO: Navegar a vista de todas las playlists
+                  // Navegar a vista de todas las playlists
+                  context.push('/playlists');
                 },
                 style: TextButton.styleFrom(
                   foregroundColor: Colors.white.withValues(alpha: 0.8),
@@ -206,13 +208,8 @@ class FeaturedPlaylistsSection extends ConsumerWidget {
   }
 
   void _onPlaylistTap(BuildContext context, Playlist playlist) {
-    // TODO: Navegar a detalles de la playlist
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Navegando a ${playlist.name ?? "Playlist"}'),
-        backgroundColor: const Color(0xFF667eea),
-      ),
-    );
+    // Navegar a detalles de la playlist
+    context.push('/playlist/${playlist.id}');
   }
 }
 

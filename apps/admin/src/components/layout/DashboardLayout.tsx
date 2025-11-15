@@ -16,6 +16,7 @@ import {
   ArrowRightOnRectangleIcon,
   ChevronDownIcon,
   StarIcon,
+  ListBulletIcon,
 } from '@heroicons/react/24/outline';
 
 interface DashboardLayoutProps {
@@ -24,9 +25,10 @@ interface DashboardLayoutProps {
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
-  { name: 'Usuarios', href: '/dashboard/users', icon: UsersIcon },
-  { name: 'Artistas', href: '/dashboard/artists', icon: MusicalNoteIcon },
-  { name: 'Canciones', href: '/dashboard/songs', icon: MusicalNoteIcon },
+  { name: 'Administrar usuarios', href: '/dashboard/users', icon: UsersIcon },
+  { name: 'Administrar artistas', href: '/dashboard/artists', icon: MusicalNoteIcon },
+  { name: 'Gestionar canciones', href: '/dashboard/songs', icon: MusicalNoteIcon },
+  { name: 'Administrar Playlists', href: '/dashboard/playlists', icon: ListBulletIcon },
   { name: 'Contenido destacado', href: '/dashboard/featured', icon: StarIcon },
   { name: 'Analytics', href: '/dashboard/analytics', icon: ChartBarIcon },
   { name: 'Pagos', href: '/dashboard/payments', icon: CreditCardIcon },

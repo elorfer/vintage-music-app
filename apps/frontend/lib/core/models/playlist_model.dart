@@ -1,5 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
 import 'user_model.dart';
+import 'song_model.dart';
 
 part 'playlist_model.g.dart';
 
@@ -27,6 +28,31 @@ enum PlaylistVisibility {
   explicitToJson: true,
   includeIfNull: false,
 )
+class PlaylistSong {
+  final String id;
+  final String playlistId;
+  final String songId;
+  final int position;
+  final DateTime? addedAt;
+  final Song? song;
+
+  const PlaylistSong({
+    required this.id,
+    required this.playlistId,
+    required this.songId,
+    required this.position,
+    this.addedAt,
+    this.song,
+  });
+
+  factory PlaylistSong.fromJson(Map<String, dynamic> json) => _$PlaylistSongFromJson(json);
+  Map<String, dynamic> toJson() => _$PlaylistSongToJson(this);
+}
+
+@JsonSerializable(
+  explicitToJson: true,
+  includeIfNull: false,
+)
 class Playlist {
   final String id;
   final String? userId;
@@ -36,12 +62,15 @@ class Playlist {
   final PlaylistType? type;
   final PlaylistVisibility? visibility;
   final bool? isPublic;
+  final bool? isFeatured;
   final int? totalTracks;
   final int? totalFollowers;
   final int? totalDuration;
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final User? user;
+  @JsonKey(name: 'playlistSongs')
+  final List<PlaylistSong>? playlistSongs;
 
   const Playlist({
     required this.id,
@@ -52,16 +81,32 @@ class Playlist {
     this.type,
     this.visibility,
     this.isPublic,
+    this.isFeatured,
     this.totalTracks,
     this.totalFollowers,
     this.totalDuration,
     this.createdAt,
     this.updatedAt,
     this.user,
+    this.playlistSongs,
   });
 
   factory Playlist.fromJson(Map<String, dynamic> json) => _$PlaylistFromJson(json);
   Map<String, dynamic> toJson() => _$PlaylistToJson(this);
+
+  /// Obtener las canciones de la playlist
+  List<Song> get songs {
+    if (playlistSongs == null || playlistSongs!.isEmpty) return [];
+    
+    // Ordenar por posición y extraer las canciones
+    final sortedPlaylistSongs = List<PlaylistSong>.from(playlistSongs!)
+      ..sort((a, b) => a.position.compareTo(b.position));
+    
+    return sortedPlaylistSongs
+        .where((ps) => ps.song != null)
+        .map((ps) => ps.song!)
+        .toList();
+  }
 
   String get durationFormatted {
     if (totalDuration == null) return '0m';

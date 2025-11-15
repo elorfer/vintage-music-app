@@ -111,14 +111,19 @@ export const apiClient = {
   
   getTopSongsByPlays: (limit = 10) => api.get(`/songs/top?limit=${limit}`),
   
-  uploadSong: (audioFile: File, coverFile: File | undefined, songData: {
-    title: string;
-    artistId: string;
-    albumId?: string;
-    genreId?: string;
-    status?: string;
-    duration?: number;
-  }) => {
+  uploadSong: (
+    audioFile: File, 
+    coverFile: File | undefined, 
+    songData: {
+      title: string;
+      artistId: string;
+      albumId?: string;
+      genreId?: string;
+      status?: string;
+      duration?: number;
+    },
+    onUploadProgress?: (progressEvent: { loaded: number; total: number }) => void
+  ) => {
     const formData = new FormData();
     formData.append('audio', audioFile);
     if (coverFile) {
@@ -138,7 +143,16 @@ export const apiClient = {
     if (songData.duration !== undefined) {
       formData.append('duration', songData.duration.toString());
     }
-    return api.post('/songs/upload', formData);
+    return api.post('/songs/upload', formData, {
+      onUploadProgress: (progressEvent) => {
+        if (progressEvent.total && onUploadProgress) {
+          onUploadProgress({
+            loaded: progressEvent.loaded,
+            total: progressEvent.total,
+          });
+        }
+      },
+    });
   },
   
   createSong: (data: any) => api.post('/songs', data),
@@ -152,6 +166,32 @@ export const apiClient = {
     api.get(`/playlists?page=${page}&limit=${limit}`),
   
   getPlaylist: (id: string) => api.get(`/playlists/${id}`),
+  
+  getFeaturedPlaylists: (limit = 10) => api.get(`/playlists/featured?limit=${limit}`),
+  
+  createPlaylist: (data: any) => api.post('/playlists', data),
+  
+  updatePlaylist: (id: string, data: any) => api.put(`/playlists/${id}`, data),
+  
+  deletePlaylist: (id: string) => api.delete(`/playlists/${id}`),
+  
+  toggleFeaturedPlaylist: (id: string) => api.patch(`/playlists/${id}/feature`),
+  
+  uploadPlaylistCover: (id: string, coverFile: File) => {
+    const formData = new FormData();
+    formData.append('cover', coverFile);
+    return api.post(`/playlists/${id}/cover`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+  
+  addSongToPlaylist: (playlistId: string, songId: string) =>
+    api.post(`/playlists/${playlistId}/songs/${songId}`),
+  
+  removeSongFromPlaylist: (playlistId: string, songId: string) =>
+    api.delete(`/playlists/${playlistId}/songs/${songId}`),
 
   // Analytics
   getGlobalStats: () => api.get('/analytics/global'),

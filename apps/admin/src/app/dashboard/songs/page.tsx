@@ -1,7 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { toast } from 'react-hot-toast';
 import {
   ArrowPathIcon,
   MagnifyingGlassIcon,
@@ -19,6 +20,7 @@ import {
   DocumentArrowUpIcon,
   PhotoIcon,
   StarIcon,
+  ListBulletIcon,
 } from '@heroicons/react/24/outline';
 
 import { useSongs, useUploadSong, useDeleteSong, useCreateSong } from '@/hooks/useSongs';
@@ -182,6 +184,8 @@ export default function SongsPage() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadForm, setUploadForm] = useState(DEFAULT_UPLOAD_FORM);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const notificationShownRef = useRef(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const { data, isLoading, isFetching, refetch } = useSongs({ page, limit: PAGE_SIZE, enabled: true });
@@ -197,12 +201,16 @@ export default function SongsPage() {
     { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
     { name: 'Administrar usuarios', href: '/dashboard/users', icon: UsersIcon },
     { name: 'Gestionar canciones', href: '/dashboard/songs', icon: MusicalNoteIcon },
+    { name: 'Administrar Playlists', href: '/dashboard/playlists', icon: ListBulletIcon },
     { name: 'Contenido destacado', href: '/dashboard/featured', icon: StarIcon },
     { name: 'Aprobar contenido', href: '/dashboard/approvals', icon: ShieldCheckIcon },
   ];
 
   const openUploadModal = () => {
     setUploadForm(DEFAULT_UPLOAD_FORM);
+    setUploadProgress(0);
+    setUploading(false);
+    notificationShownRef.current = false;
     setShowUploadModal(true);
   };
 
@@ -252,6 +260,8 @@ export default function SongsPage() {
 
     try {
       setUploading(true);
+      setUploadProgress(0);
+      notificationShownRef.current = false;
       
       // Subir archivos y crear registro en una sola petición transaccional
       await uploadSong({
@@ -262,14 +272,26 @@ export default function SongsPage() {
           artistId: uploadForm.artistId,
           status: 'published', // Estado publicado por defecto
         },
+        onProgress: (progress) => {
+          setUploadProgress(progress);
+          // Cuando el progreso llegue al 100%, la subida está completa
+          // Mostrar notificación solo una vez usando ref para evitar duplicados
+          if (progress === 100 && !notificationShownRef.current) {
+            notificationShownRef.current = true;
+            // Pequeño delay para asegurar que el estado se actualice
+            setTimeout(() => {
+              toast.success('¡Canción subida exitosamente! Procesando metadatos...');
+              setShowUploadModal(false);
+              setUploadForm(DEFAULT_UPLOAD_FORM);
+              setUploadProgress(0);
+              notificationShownRef.current = false;
+            }, 800);
+          }
+        },
       });
-
-      setShowUploadModal(false);
-      setUploadForm(DEFAULT_UPLOAD_FORM);
-      
-      // El hook useUploadSong ya maneja el polling y refresco automático
     } catch (error) {
       // Error manejado por los hooks
+      setUploadProgress(0);
     } finally {
       setUploading(false);
     }
@@ -492,8 +514,14 @@ export default function SongsPage() {
                 </p>
               </div>
               <button
-                onClick={() => setShowUploadModal(false)}
-                className="rounded-full p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+                onClick={() => {
+                  if (!uploading) {
+                    setShowUploadModal(false);
+                    setUploadForm(DEFAULT_UPLOAD_FORM);
+                    setUploadProgress(0);
+                  }
+                }}
+                className="rounded-full p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
                 aria-label="Cerrar"
                 disabled={uploading}
               >
@@ -508,33 +536,69 @@ export default function SongsPage() {
                 </label>
                 <div className="mt-1">
                   {uploadForm.file ? (
-                    <div className="w-full border-2 border-green-300 border-dashed rounded-lg bg-green-50 p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex-shrink-0">
-                          <div className="h-12 w-12 rounded-lg bg-green-100 flex items-center justify-center">
-                            <MusicalNoteIcon className="h-6 w-6 text-green-600" />
+                    <div className={`w-full border-2 rounded-lg p-4 transition ${
+                      uploading 
+                        ? 'border-purple-300 bg-purple-50' 
+                        : 'border-green-300 bg-green-50 border-dashed'
+                    }`}>
+                      <div className="flex items-center gap-4">
+                        <div className="flex-shrink-0 relative">
+                          <div className={`h-16 w-16 rounded-lg flex items-center justify-center ${
+                            uploading ? 'bg-purple-100 border-2 border-purple-400' : 'bg-green-100'
+                          }`}>
+                            {uploading ? (
+                              <ArrowPathIcon className="h-8 w-8 text-purple-600 animate-spin" />
+                            ) : (
+                              <MusicalNoteIcon className="h-8 w-8 text-green-600" />
+                            )}
                           </div>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <CheckCircleIcon className="h-5 w-5 text-green-600 flex-shrink-0" />
+                          <div className="flex items-center gap-2 mb-2">
+                            {uploading ? (
+                              <ArrowPathIcon className="h-5 w-5 text-purple-600 flex-shrink-0 animate-spin" />
+                            ) : (
+                              <CheckCircleIcon className="h-5 w-5 text-green-600 flex-shrink-0" />
+                            )}
                             <p className="text-sm font-semibold text-gray-900 truncate">
                               {uploadForm.file.name}
                             </p>
                           </div>
-                          <p className="text-xs text-gray-600">
-                            {(uploadForm.file.size / 1024 / 1024).toFixed(2)} MB • Archivo seleccionado
-                          </p>
+                          {uploading ? (
+                            <>
+                              <div className="mb-2">
+                                <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+                                  <span>Subiendo...</span>
+                                  <span className="font-semibold text-purple-600">{uploadProgress}%</span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                  <div
+                                    className="bg-gradient-to-r from-purple-500 to-purple-600 h-full rounded-full transition-all duration-300 ease-out"
+                                    style={{ width: `${uploadProgress}%` }}
+                                  />
+                                </div>
+                              </div>
+                              <p className="text-xs text-gray-600">
+                                {(uploadForm.file.size / 1024 / 1024).toFixed(2)} MB • Subiendo...
+                              </p>
+                            </>
+                          ) : (
+                            <p className="text-xs text-gray-600">
+                              {(uploadForm.file.size / 1024 / 1024).toFixed(2)} MB • Archivo seleccionado
+                            </p>
+                          )}
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => setUploadForm((prev) => ({ ...prev, file: null }))}
-                          className="flex-shrink-0 rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-600 transition"
-                          disabled={uploading}
-                          aria-label="Eliminar archivo"
-                        >
-                          <XMarkIcon className="h-5 w-5" />
-                        </button>
+                        {!uploading && (
+                          <button
+                            type="button"
+                            onClick={() => setUploadForm((prev) => ({ ...prev, file: null }))}
+                            className="flex-shrink-0 rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-600 transition"
+                            disabled={uploading}
+                            aria-label="Eliminar archivo"
+                          >
+                            <XMarkIcon className="h-5 w-5" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   ) : (
@@ -566,41 +630,90 @@ export default function SongsPage() {
                 </label>
                 <div className="mt-1">
                   {uploadForm.coverFile ? (
-                    <div className="w-full border-2 border-blue-300 border-dashed rounded-lg bg-blue-50 p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex-shrink-0">
-                          <div className="h-12 w-12 rounded-lg bg-blue-100 flex items-center justify-center overflow-hidden">
+                    <div className={`w-full border-2 rounded-lg p-4 transition ${
+                      uploading 
+                        ? 'border-purple-300 bg-purple-50' 
+                        : 'border-blue-300 bg-blue-50'
+                    }`}>
+                      <div className="flex items-center gap-4">
+                        <div className="flex-shrink-0 relative">
+                          <div className={`h-20 w-20 rounded-lg overflow-hidden border-2 ${
+                            uploading ? 'border-purple-400' : 'border-blue-300'
+                          }`}>
                             {uploadForm.coverFile.type.startsWith('image/') ? (
-                              <img
-                                src={URL.createObjectURL(uploadForm.coverFile)}
-                                alt="Vista previa"
-                                className="h-full w-full object-cover"
-                              />
+                              <>
+                                <img
+                                  src={URL.createObjectURL(uploadForm.coverFile)}
+                                  alt="Vista previa"
+                                  className={`h-full w-full object-cover ${
+                                    uploading ? 'opacity-50' : ''
+                                  }`}
+                                />
+                                {uploading && (
+                                  <div className="absolute inset-0 flex items-center justify-center bg-purple-500/20 backdrop-blur-sm">
+                                    <ArrowPathIcon className="h-8 w-8 text-purple-600 animate-spin" />
+                                  </div>
+                                )}
+                              </>
                             ) : (
-                              <PhotoIcon className="h-6 w-6 text-blue-600" />
+                              <div className={`h-full w-full flex items-center justify-center ${
+                                uploading ? 'bg-purple-100' : 'bg-blue-100'
+                              }`}>
+                                {uploading ? (
+                                  <ArrowPathIcon className="h-8 w-8 text-purple-600 animate-spin" />
+                                ) : (
+                                  <PhotoIcon className="h-6 w-6 text-blue-600" />
+                                )}
+                              </div>
                             )}
                           </div>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <CheckCircleIcon className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                          <div className="flex items-center gap-2 mb-2">
+                            {uploading ? (
+                              <ArrowPathIcon className="h-5 w-5 text-purple-600 flex-shrink-0 animate-spin" />
+                            ) : (
+                              <CheckCircleIcon className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                            )}
                             <p className="text-sm font-semibold text-gray-900 truncate">
                               {uploadForm.coverFile.name}
                             </p>
                           </div>
-                          <p className="text-xs text-gray-600">
-                            {(uploadForm.coverFile.size / 1024 / 1024).toFixed(2)} MB • Imagen seleccionada
-                          </p>
+                          {uploading ? (
+                            <>
+                              <div className="mb-2">
+                                <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+                                  <span>Subiendo...</span>
+                                  <span className="font-semibold text-purple-600">{uploadProgress}%</span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                  <div
+                                    className="bg-gradient-to-r from-purple-500 to-purple-600 h-full rounded-full transition-all duration-300 ease-out"
+                                    style={{ width: `${uploadProgress}%` }}
+                                  />
+                                </div>
+                              </div>
+                              <p className="text-xs text-gray-600">
+                                {(uploadForm.coverFile.size / 1024 / 1024).toFixed(2)} MB • Subiendo...
+                              </p>
+                            </>
+                          ) : (
+                            <p className="text-xs text-gray-600">
+                              {(uploadForm.coverFile.size / 1024 / 1024).toFixed(2)} MB • Imagen seleccionada
+                            </p>
+                          )}
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => setUploadForm((prev) => ({ ...prev, coverFile: null }))}
-                          className="flex-shrink-0 rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-600 transition"
-                          disabled={uploading}
-                          aria-label="Eliminar imagen"
-                        >
-                          <XMarkIcon className="h-5 w-5" />
-                        </button>
+                        {!uploading && (
+                          <button
+                            type="button"
+                            onClick={() => setUploadForm((prev) => ({ ...prev, coverFile: null }))}
+                            className="flex-shrink-0 rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-600 transition"
+                            disabled={uploading}
+                            aria-label="Eliminar imagen"
+                          >
+                            <XMarkIcon className="h-5 w-5" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   ) : (
@@ -673,7 +786,13 @@ export default function SongsPage() {
               <div className="flex items-center justify-end gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowUploadModal(false)}
+                  onClick={() => {
+                    if (!uploading) {
+                      setShowUploadModal(false);
+                      setUploadForm(DEFAULT_UPLOAD_FORM);
+                      setUploadProgress(0);
+                    }
+                  }}
                   className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 transition hover:border-gray-300 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={uploading}
                 >

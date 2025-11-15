@@ -1,10 +1,11 @@
 import {
   Controller,
   Get,
+  Param,
   Query,
   ParseIntPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiParam } from '@nestjs/swagger';
 
 import { PlaylistsService } from './playlists.service';
 
@@ -33,5 +34,15 @@ export class PublicPlaylistsController {
     @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 10,
   ) {
     return this.playlistsService.findAll(page, limit);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Obtener playlist por ID (público)' })
+  @ApiResponse({ status: 200, description: 'Playlist obtenida exitosamente' })
+  @ApiResponse({ status: 404, description: 'Playlist no encontrada' })
+  async findOne(
+    @Param('id') id: string,
+  ) {
+    return this.playlistsService.findOne(id);
   }
 }

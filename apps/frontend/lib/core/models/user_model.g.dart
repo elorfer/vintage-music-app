@@ -10,8 +10,8 @@ User _$UserFromJson(Map<String, dynamic> json) => User(
       id: json['id'] as String,
       email: json['email'] as String,
       username: json['username'] as String,
-      firstName: json['first_name'] as String,
-      lastName: json['last_name'] as String,
+      firstName: json['first_name'] as String?,
+      lastName: json['last_name'] as String?,
       avatarUrl: json['avatar_url'] as String?,
       role: $enumDecode(_$UserRoleEnumMap, json['role']),
       subscriptionStatus:
@@ -37,8 +37,6 @@ Map<String, dynamic> _$UserToJson(User instance) {
     'id': instance.id,
     'email': instance.email,
     'username': instance.username,
-    'first_name': instance.firstName,
-    'last_name': instance.lastName,
   };
 
   void writeNotNull(String key, dynamic value) {
@@ -47,6 +45,8 @@ Map<String, dynamic> _$UserToJson(User instance) {
     }
   }
 
+  writeNotNull('first_name', instance.firstName);
+  writeNotNull('last_name', instance.lastName);
   writeNotNull('avatar_url', instance.avatarUrl);
   val['role'] = _$UserRoleEnumMap[instance.role]!;
   val['subscription_status'] =

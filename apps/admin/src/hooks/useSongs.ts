@@ -107,7 +107,8 @@ export const useUploadSong = () => {
     async ({ 
       audioFile, 
       coverFile, 
-      songData 
+      songData,
+      onProgress
     }: { 
       audioFile: File; 
       coverFile?: File;
@@ -119,8 +120,19 @@ export const useUploadSong = () => {
         status?: string;
         duration?: number;
       };
+      onProgress?: (progress: number) => void;
     }) => {
-      const response = await apiClient.uploadSong(audioFile, coverFile, songData);
+      const response = await apiClient.uploadSong(
+        audioFile, 
+        coverFile, 
+        songData,
+        (progressEvent) => {
+          if (onProgress) {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            onProgress(percentCompleted);
+          }
+        }
+      );
       return response.data;
     },
     {
@@ -129,6 +141,7 @@ export const useUploadSong = () => {
         await queryClient.invalidateQueries([SONGS_QUERY_KEY]);
         
         // Polling inteligente: refrescar hasta que la canción esté completamente procesada
+        // La notificación de éxito se muestra desde el componente cuando el progreso llega al 100%
         let attempts = 0;
         const maxAttempts = 20; // 20 intentos = 10 segundos máximo
         
@@ -138,9 +151,9 @@ export const useUploadSong = () => {
           // Refrescar queries
           const result = await queryClient.refetchQueries([SONGS_QUERY_KEY]);
           
-          // Si ya hemos intentado varias veces, dejar de intentar
+          // Si ya hemos intentado varias veces, dejar de intentar sin mostrar notificación
+          // La notificación ya se mostró cuando el progreso llegó al 100%
           if (attempts >= maxAttempts) {
-            toast.success('Canción subida. Si no aparece completa, recarga la página.');
             return;
           }
           
@@ -150,8 +163,6 @@ export const useUploadSong = () => {
         
         // Comenzar polling después de 2 segundos iniciales
         setTimeout(pollUntilReady, 2000);
-        
-        toast.success('Canción subida. Procesando metadatos...');
       },
       onError: (error) => {
         toast.error(extractErrorMessage(error));

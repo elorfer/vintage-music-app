@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/splash/splash_screen.dart';
+import '../../features/playlists/screens/playlists_screen.dart';
+import '../../features/playlists/screens/playlist_detail_screen.dart';
 import '../providers/auth_provider.dart';
 import 'main_navigation.dart';
 
@@ -60,6 +62,17 @@ class GoRouterNotifier extends ChangeNotifier {
         GoRoute(
           path: '/home',
           builder: (context, state) => const MainNavigation(),
+        ),
+        GoRoute(
+          path: '/playlists',
+          builder: (context, state) => const PlaylistsScreen(),
+        ),
+        GoRoute(
+          path: '/playlist/:id',
+          builder: (context, state) {
+            final playlistId = state.pathParameters['id'] ?? '';
+            return PlaylistDetailScreen(playlistId: playlistId);
+          },
         ),
         GoRoute(
           path: '/',
