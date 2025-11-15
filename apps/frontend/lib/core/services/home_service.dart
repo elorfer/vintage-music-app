@@ -1,7 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../utils/logger.dart';
 import '../config/api_config.dart';
 import '../models/artist_model.dart';
 import '../models/song_model.dart';
@@ -90,19 +89,15 @@ class HomeService {
               rank: entry.key + 1,
             );
           } catch (e) {
-            AppLogger.error('Error al parsear artista destacado', e);
             return null;
           }
         }).where((item) => item != null).cast<FeaturedArtist>().toList();
       } else {
-        AppLogger.error('HomeService: Error artistas - Status: ${response.statusCode}');
         return [];
       }
-    } on DioException catch (e) {
-      AppLogger.error('HomeService: Error obteniendo artistas: ${e.message}');
+    } on DioException {
       return [];
     } catch (e) {
-      AppLogger.error('HomeService: Error inesperado en artistas', e);
       return [];
     }
   }
@@ -208,8 +203,7 @@ class HomeService {
                   updatedAt: tempSong.updatedAt,
                   artist: artist,
                 );
-              } catch (e, stackTrace) {
-                AppLogger.error('HomeService: Error parseando artista', e, stackTrace);
+              } catch (e) {
                 final tempSong = Song.fromJson(songData);
                 final rawCoverUrl = tempSong.coverArtUrl ?? 
                                    songData['cover_art_url'] as String? ?? 
@@ -280,21 +274,18 @@ class HomeService {
                 rank: i + 1,
               ),
             );
-          } catch (e, stackTrace) {
-            AppLogger.error('HomeService: Error parseando canción destacada', e, stackTrace);
+          } catch (e) {
+            // Error silencioso al parsear canción individual
           }
         }
 
         return featuredSongs;
       } else {
-        AppLogger.error('HomeService: Error obteniendo canciones destacadas - Status: ${response.statusCode}');
         return [];
       }
-    } on DioException catch (e) {
-      AppLogger.error('HomeService: Error de red al obtener canciones destacadas: ${e.message}');
+    } on DioException {
       return [];
-    } catch (e, stackTrace) {
-      AppLogger.error('HomeService: Error inesperado', e, stackTrace);
+    } catch (e) {
       return [];
     }
   }
@@ -359,19 +350,15 @@ class HomeService {
           try {
             return Artist.fromJson(json as Map<String, dynamic>);
           } catch (e) {
-            AppLogger.error('Error al parsear artista top', e);
             return null;
           }
         }).where((item) => item != null).cast<Artist>().toList();
       } else {
-        AppLogger.error('HomeService: Error artistas top - Status: ${response.statusCode}');
         return [];
       }
-    } on DioException catch (e) {
-      AppLogger.error('HomeService: Error obteniendo artistas top: ${e.message}');
+    } on DioException {
       return [];
     } catch (e) {
-      AppLogger.error('HomeService: Error inesperado en artistas top', e);
       return [];
     }
   }
@@ -454,21 +441,18 @@ class HomeService {
               rank: i + 1,
             );
             playlists.add(featuredPlaylist);
-          } catch (e, stackTrace) {
-            AppLogger.error('HomeService: Error al parsear playlist', e, stackTrace);
+          } catch (e) {
+            // Error silencioso al parsear playlist individual
           }
         }
         
         return playlists;
       } else {
-        AppLogger.error('HomeService: Error playlists destacadas - Status: ${response.statusCode}');
         return [];
       }
-    } on DioException catch (e) {
-      AppLogger.error('HomeService: Error obteniendo playlists destacadas: ${e.message}');
+    } on DioException {
       return [];
-    } catch (e, stackTrace) {
-      AppLogger.error('HomeService: Error inesperado en playlists destacadas', e, stackTrace);
+    } catch (e) {
       return [];
     }
   }

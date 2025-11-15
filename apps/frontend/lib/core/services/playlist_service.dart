@@ -1,7 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../utils/logger.dart';
 import '../config/api_config.dart';
 import '../models/playlist_model.dart';
 import '../models/song_model.dart';
@@ -56,7 +55,6 @@ class PlaylistService {
           handler.next(options);
         },
         onError: (error, handler) {
-          AppLogger.error('Error en PlaylistService: ${error.message}');
           handler.next(error);
         },
       ),
@@ -72,7 +70,6 @@ class PlaylistService {
   }) async {
     try {
       if (_dio == null) {
-        AppLogger.error('PlaylistService: Dio no está inicializado');
         return [];
       }
       
@@ -103,19 +100,15 @@ class PlaylistService {
             
             return Playlist.fromJson(normalizedData);
           } catch (e) {
-            AppLogger.error('Error al parsear playlist', e);
             return null;
           }
         }).where((item) => item != null).cast<Playlist>().toList();
       } else {
-        AppLogger.error('PlaylistService: Error playlists - Status: ${response.statusCode}');
         return [];
       }
-    } on DioException catch (e) {
-      AppLogger.error('PlaylistService: DioException en playlists: ${e.message}');
+    } on DioException {
       return [];
     } catch (e) {
-      AppLogger.error('PlaylistService: Error inesperado en playlists', e);
       return [];
     }
   }
@@ -125,12 +118,10 @@ class PlaylistService {
     try {
       // Validar que el ID no esté vacío
       if (id.isEmpty || id.trim().isEmpty) {
-        AppLogger.error('PlaylistService: ID de playlist vacío o inválido');
         return null;
       }
       
       if (_dio == null) {
-        AppLogger.error('PlaylistService: Dio no está inicializado');
         return null;
       }
       
@@ -148,29 +139,20 @@ class PlaylistService {
           Playlist playlist;
           try {
             playlist = Playlist.fromJson(normalizedData);
-          } catch (e, stackTrace) {
-            AppLogger.error('PlaylistService: Error parseando Playlist desde JSON', e, stackTrace);
+          } catch (e) {
             return null;
           }
           
           return playlist;
-        } catch (e, stackTrace) {
-          AppLogger.error('PlaylistService: Error parseando playlist', e, stackTrace);
+        } catch (e) {
           return null;
         }
       } else {
-        AppLogger.error('PlaylistService: Error playlist - Status: ${response.statusCode}');
         return null;
       }
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 404) {
-        AppLogger.warning('PlaylistService: Playlist no encontrada (404) - ID: $id');
-      } else {
-        AppLogger.error('PlaylistService: Error obteniendo playlist: ${e.message}');
-      }
+    } on DioException {
       return null;
-    } catch (e, stackTrace) {
-      AppLogger.error('PlaylistService: Error inesperado en playlist', e, stackTrace);
+    } catch (e) {
       return null;
     }
   }
@@ -187,7 +169,6 @@ class PlaylistService {
 
       return playlist.songs;
     } catch (e) {
-      AppLogger.error('PlaylistService: Error obteniendo canciones de playlist', e);
       return [];
     }
   }
@@ -196,7 +177,6 @@ class PlaylistService {
   Future<List<Playlist>> getFeaturedPlaylists({int limit = 10}) async {
     try {
       if (_dio == null) {
-        AppLogger.error('PlaylistService: Dio no está inicializado');
         return [];
       }
       
@@ -221,19 +201,15 @@ class PlaylistService {
             
             return Playlist.fromJson(normalizedData);
           } catch (e) {
-            AppLogger.error('Error al parsear playlist destacada', e);
             return null;
           }
         }).where((item) => item != null).cast<Playlist>().toList();
       } else {
-        AppLogger.error('PlaylistService: Error playlists destacadas - Status: ${response.statusCode}');
         return [];
       }
-    } on DioException catch (e) {
-      AppLogger.error('PlaylistService: DioException en playlists destacadas: ${e.message}');
+    } on DioException {
       return [];
     } catch (e) {
-      AppLogger.error('PlaylistService: Error inesperado en playlists destacadas', e);
       return [];
     }
   }

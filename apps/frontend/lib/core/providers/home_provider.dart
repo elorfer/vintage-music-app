@@ -3,7 +3,6 @@ import '../services/home_service.dart';
 import '../models/artist_model.dart';
 import '../models/song_model.dart';
 import '../models/playlist_model.dart';
-import '../utils/logger.dart';
 
 /// Provider para el servicio de home
 final homeServiceProvider = Provider<HomeService>((ref) {
@@ -96,41 +95,19 @@ class HomeNotifier extends Notifier<HomeState> {
       List<Song> popularSongs = [];
       List<Artist> topArtists = [];
 
-      // Cargar artistas destacados
-      try {
-        featuredArtists = await _homeService.getFeaturedArtists(limit: 6);
-        AppLogger.success('HomeProvider: Artistas destacados cargados: ${featuredArtists.length}');
-      } catch (e) {
-        AppLogger.error('HomeProvider: Error cargando artistas destacados', e);
-      }
-
-      // Cargar canciones destacadas (aumentar límite para asegurar que se muestren todas)
-      try {
-        featuredSongs = await _homeService.getFeaturedSongs(limit: 20);
-        AppLogger.success('HomeProvider: Canciones destacadas cargadas: ${featuredSongs.length}');
-      } catch (e) {
-        AppLogger.error('HomeProvider: Error cargando canciones destacadas', e);
-      }
-
-      // Cargar playlists destacadas
-      try {
-        featuredPlaylists = await _homeService.getFeaturedPlaylists(limit: 6);
-        AppLogger.success('HomeProvider: Playlists destacadas cargadas: ${featuredPlaylists.length}');
-      } catch (e) {
-        AppLogger.error('HomeProvider: Error cargando playlists destacadas', e);
-      }
-
-      // Cargar canciones populares (error silencioso si falla)
-      // No loguear nada - el endpoint puede no estar disponible (500, etc.)
-      popularSongs = await _homeService.getPopularSongs(limit: 10);
-
-      // Cargar artistas top
-      try {
-        topArtists = await _homeService.getTopArtists(limit: 8);
-        AppLogger.success('HomeProvider: Artistas top cargados: ${topArtists.length}');
-      } catch (e) {
-        AppLogger.error('HomeProvider: Error cargando artistas top', e);
-      }
+      // Cargar datos en paralelo para mejor rendimiento
+      await Future.wait([
+        // Artistas destacados
+        _homeService.getFeaturedArtists(limit: 6).then((value) => featuredArtists = value).catchError((_) => <FeaturedArtist>[]),
+        // Canciones destacadas
+        _homeService.getFeaturedSongs(limit: 20).then((value) => featuredSongs = value).catchError((_) => <FeaturedSong>[]),
+        // Playlists destacadas
+        _homeService.getFeaturedPlaylists(limit: 6).then((value) => featuredPlaylists = value).catchError((_) => <FeaturedPlaylist>[]),
+        // Canciones populares (error silencioso si falla)
+        _homeService.getPopularSongs(limit: 10).then((value) => popularSongs = value).catchError((_) => <Song>[]),
+        // Artistas top
+        _homeService.getTopArtists(limit: 8).then((value) => topArtists = value).catchError((_) => <Artist>[]),
+      ]);
 
       state = state.copyWith(
         featuredArtists: featuredArtists,
@@ -142,10 +119,7 @@ class HomeNotifier extends Notifier<HomeState> {
         error: null,
         isInitialized: true,
       );
-
-      AppLogger.success('HomeProvider: Datos cargados exitosamente');
     } catch (e) {
-      AppLogger.error('HomeProvider: Error general', e);
       state = state.copyWith(
         isLoading: false,
         error: 'Error al cargar datos: $e',
@@ -166,41 +140,19 @@ class HomeNotifier extends Notifier<HomeState> {
       List<Song> popularSongs = [];
       List<Artist> topArtists = [];
 
-      // Cargar artistas destacados
-      try {
-        featuredArtists = await _homeService.getFeaturedArtists(limit: 6);
-        AppLogger.success('HomeProvider: Artistas destacados cargados (refresh): ${featuredArtists.length}');
-      } catch (e) {
-        AppLogger.error('HomeProvider: Error cargando artistas destacados (refresh)', e);
-      }
-
-      // Cargar canciones destacadas con forceRefresh para evitar caché
-      try {
-        featuredSongs = await _homeService.getFeaturedSongs(limit: 20, forceRefresh: true);
-        AppLogger.success('HomeProvider: Canciones destacadas cargadas (refresh): ${featuredSongs.length}');
-      } catch (e) {
-        AppLogger.error('HomeProvider: Error cargando canciones destacadas (refresh)', e);
-      }
-
-      // Cargar playlists destacadas
-      try {
-        featuredPlaylists = await _homeService.getFeaturedPlaylists(limit: 6);
-        AppLogger.success('HomeProvider: Playlists destacadas cargadas (refresh): ${featuredPlaylists.length}');
-      } catch (e) {
-        AppLogger.error('HomeProvider: Error cargando playlists destacadas (refresh)', e);
-      }
-
-      // Cargar canciones populares (error silencioso si falla)
-      // No loguear nada - el endpoint puede no estar disponible (500, etc.)
-      popularSongs = await _homeService.getPopularSongs(limit: 10);
-
-      // Cargar artistas top
-      try {
-        topArtists = await _homeService.getTopArtists(limit: 8);
-        AppLogger.success('HomeProvider: Artistas top cargados (refresh): ${topArtists.length}');
-      } catch (e) {
-        AppLogger.error('HomeProvider: Error cargando artistas top (refresh)', e);
-      }
+      // Cargar datos en paralelo para mejor rendimiento
+      await Future.wait([
+        // Artistas destacados
+        _homeService.getFeaturedArtists(limit: 6).then((value) => featuredArtists = value).catchError((_) => <FeaturedArtist>[]),
+        // Canciones destacadas con forceRefresh para evitar caché
+        _homeService.getFeaturedSongs(limit: 20, forceRefresh: true).then((value) => featuredSongs = value).catchError((_) => <FeaturedSong>[]),
+        // Playlists destacadas
+        _homeService.getFeaturedPlaylists(limit: 6).then((value) => featuredPlaylists = value).catchError((_) => <FeaturedPlaylist>[]),
+        // Canciones populares (error silencioso si falla)
+        _homeService.getPopularSongs(limit: 10).then((value) => popularSongs = value).catchError((_) => <Song>[]),
+        // Artistas top
+        _homeService.getTopArtists(limit: 8).then((value) => topArtists = value).catchError((_) => <Artist>[]),
+      ]);
 
       state = state.copyWith(
         featuredArtists: featuredArtists,
@@ -212,10 +164,7 @@ class HomeNotifier extends Notifier<HomeState> {
         error: null,
         isInitialized: true,
       );
-
-      AppLogger.success('HomeProvider: Datos refrescados exitosamente');
     } catch (e) {
-      AppLogger.error('HomeProvider: Error general en refresh', e);
       state = state.copyWith(
         isLoading: false,
         error: 'Error al refrescar datos: $e',
@@ -239,7 +188,6 @@ class HomeNotifier extends Notifier<HomeState> {
     try {
       final songs = await _homeService.getFeaturedSongs(limit: 20, forceRefresh: forceRefresh);
       state = state.copyWith(featuredSongs: songs);
-      AppLogger.success('HomeProvider: Canciones destacadas actualizadas: ${songs.length}');
     } catch (e) {
       state = state.copyWith(error: 'Error al cargar canciones: $e');
     }
@@ -266,39 +214,33 @@ final homeStateProvider = NotifierProvider<HomeNotifier, HomeState>(() {
   return HomeNotifier();
 });
 
-/// Providers específicos para cada sección
+/// Providers específicos para cada sección con selectors para evitar rebuilds innecesarios
+/// Usando select() para optimizar: solo se reconstruyen cuando cambia el valor específico
 final featuredArtistsProvider = Provider<List<FeaturedArtist>>((ref) {
-  final homeState = ref.watch(homeStateProvider);
-  return homeState.featuredArtists;
+  return ref.watch(homeStateProvider.select((state) => state.featuredArtists));
 });
 
 final featuredSongsProvider = Provider<List<FeaturedSong>>((ref) {
-  final homeState = ref.watch(homeStateProvider);
-  return homeState.featuredSongs;
+  return ref.watch(homeStateProvider.select((state) => state.featuredSongs));
 });
 
 final featuredPlaylistsProvider = Provider<List<FeaturedPlaylist>>((ref) {
-  final homeState = ref.watch(homeStateProvider);
-  return homeState.featuredPlaylists;
+  return ref.watch(homeStateProvider.select((state) => state.featuredPlaylists));
 });
 
 final popularSongsProvider = Provider<List<Song>>((ref) {
-  final homeState = ref.watch(homeStateProvider);
-  return homeState.popularSongs;
+  return ref.watch(homeStateProvider.select((state) => state.popularSongs));
 });
 
 final topArtistsProvider = Provider<List<Artist>>((ref) {
-  final homeState = ref.watch(homeStateProvider);
-  return homeState.topArtists;
+  return ref.watch(homeStateProvider.select((state) => state.topArtists));
 });
 
 final isLoadingProvider = Provider<bool>((ref) {
-  final homeState = ref.watch(homeStateProvider);
-  return homeState.isLoading;
+  return ref.watch(homeStateProvider.select((state) => state.isLoading));
 });
 
 final homeErrorProvider = Provider<String?>((ref) {
-  final homeState = ref.watch(homeStateProvider);
-  return homeState.error;
+  return ref.watch(homeStateProvider.select((state) => state.error));
 });
 

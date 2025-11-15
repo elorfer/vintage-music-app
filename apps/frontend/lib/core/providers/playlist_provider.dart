@@ -2,15 +2,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/playlist_service.dart';
 import '../models/playlist_model.dart';
 import '../models/song_model.dart';
-import '../utils/logger.dart';
 
 /// Provider para el servicio de playlists (singleton)
 final playlistServiceProvider = Provider<PlaylistService>((ref) {
   final service = PlaylistService();
   // Inicializar una vez al crear el provider
-  service.initialize().catchError((e) {
-    AppLogger.error('PlaylistProvider: Error inicializando servicio', e);
-  });
+  service.initialize().catchError((_) {});
   return service;
 });
 
@@ -20,7 +17,6 @@ final playlistsProvider = FutureProvider.family<List<Playlist>, ({int page, int 
     final service = ref.read(playlistServiceProvider);
     return await service.getPlaylists(page: params.page, limit: params.limit);
   } catch (e) {
-    AppLogger.error('PlaylistProvider: Error obteniendo playlists', e);
     return [];
   }
 });
@@ -31,7 +27,6 @@ final playlistProvider = FutureProvider.family<Playlist?, String>((ref, id) asyn
     final service = ref.read(playlistServiceProvider);
     return await service.getPlaylistById(id);
   } catch (e) {
-    AppLogger.error('PlaylistProvider: Error obteniendo playlist $id', e);
     return null;
   }
 });
@@ -42,7 +37,6 @@ final featuredPlaylistsProvider = FutureProvider<List<Playlist>>((ref) async {
     final service = ref.read(playlistServiceProvider);
     return await service.getFeaturedPlaylists(limit: 10);
   } catch (e) {
-    AppLogger.error('PlaylistProvider: Error obteniendo playlists destacadas', e);
     return [];
   }
 });
@@ -53,7 +47,6 @@ final playlistSongsProvider = FutureProvider.family<List<Song>, String>((ref, pl
     final service = ref.read(playlistServiceProvider);
     return await service.getPlaylistSongs(playlistId);
   } catch (e) {
-    AppLogger.error('PlaylistProvider: Error obteniendo canciones de playlist $playlistId', e);
     return [];
   }
 });
