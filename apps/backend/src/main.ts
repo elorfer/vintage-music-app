@@ -1,14 +1,30 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { join } from 'path';
 // import * as compression from 'compression';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // Habilitar logs detallados
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    logger: ['log', 'error', 'warn', 'debug', 'verbose'],
+  });
   const configService = app.get(ConfigService);
+  const logger = new Logger('Bootstrap');
+
+  // Configurar servicio estático para archivos subidos
+  app.useStaticAssets(join(process.cwd(), 'uploads'), {
+    prefix: '/uploads',
+  });
+  
+  // Configurar servicio estático para portadas
+  app.useStaticAssets(join(process.cwd(), 'uploads', 'covers'), {
+    prefix: '/uploads/covers',
+  });
 
   // Configuración de seguridad
   app.use(helmet());
@@ -22,14 +38,14 @@ async function bootstrap() {
       : [
           'http://localhost:3001', // Admin panel (alternativo)
           'http://localhost:3002', // Admin panel (puerto principal)
-          'http://localhost:3000', // Backend
+          'http://localhost:3001', // Backend
           'http://localhost:8080', // Flutter web
           'http://localhost:8081', // Flutter web alternativo
           'http://localhost:8082', // Flutter web alternativo
           'http://127.0.0.1:8080', // Flutter web localhost alternativo
           'http://127.0.0.1:8081', // Flutter web localhost alternativo
           'http://127.0.0.1:3002', // Admin panel localhost
-          'http://10.0.2.2:3000', // Android emulator
+          'http://10.0.2.2:3001', // Android emulator
           'http://10.0.2.2:8080', // Android emulator Flutter
         ],
     credentials: true,
@@ -38,10 +54,12 @@ async function bootstrap() {
   });
 
   // Validación global
+  // Nota: forbidNonWhitelisted está deshabilitado para permitir FormData en rutas de upload
+  // whitelist: true sigue filtrando campos no permitidos en otras rutas
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
-      forbidNonWhitelisted: true,
+      forbidNonWhitelisted: false, // Deshabilitado para permitir FormData en uploads
       transform: true,
     }),
   );
@@ -62,7 +80,7 @@ async function bootstrap() {
     .addTag('playlists', 'Gestión de playlists')
     .addTag('streaming', 'Streaming de música')
     .addTag('analytics', 'Estadísticas y analytics')
-    .addTag('payments', 'Procesamiento de pagos')
+    // .addTag('payments', 'Procesamiento de pagos')  // Deshabilitado - Pagos no implementados aún
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
@@ -71,8 +89,12 @@ async function bootstrap() {
   const port = configService.get('PORT', 3000);
   await app.listen(port);
   
-  console.log(`🎵 Vintage Music Backend ejecutándose en puerto ${port}`);
-  console.log(`📚 Documentación API disponible en http://localhost:${port}/api/docs`);
+  logger.log('═══════════════════════════════════════════════════════════');
+  logger.log(`🎵 Vintage Music Backend ejecutándose en puerto ${port}`);
+  logger.log(`📚 Documentación API disponible en http://localhost:${port}/api/docs`);
+  logger.log('═══════════════════════════════════════════════════════════');
+  logger.log('✅ Logger configurado - Todos los logs serán visibles');
+  logger.log('═══════════════════════════════════════════════════════════');
 }
 
 bootstrap();

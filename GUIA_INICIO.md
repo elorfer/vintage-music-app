@@ -239,27 +239,37 @@ npm run dev:frontend-only
 
 **Solución:**
 
+#### ✅ Configuración Automática (Recomendado)
+
+La app **detecta automáticamente** el entorno:
+- **Modo DEBUG** (desarrollo): Usa `localhost` o `10.0.2.2` automáticamente
+- **Modo RELEASE** (producción): Usa la URL de producción automáticamente
+
+**No necesitas configurar nada manualmente** si ejecutas en modo DEBUG:
+```bash
+flutter run  # ✅ Automáticamente usa localhost
+```
+
 #### Para Android Emulator:
 - El backend debe estar en `http://localhost:3000`
-- La app usa `http://10.0.2.2:3000` (automático)
+- La app usa `http://10.0.2.2:3000` automáticamente (modo DEBUG)
 
 #### Para Dispositivo Físico:
-1. Encuentra tu IP local:
-   ```bash
-   # Windows
-   ipconfig
-   
-   # Mac/Linux
-   ifconfig
-   ```
-2. Cambia la configuración en `apps/frontend/lib/core/config/app_config.dart`:
-   ```dart
-   defaultValue: 'http://TU_IP_LOCAL:3000'
-   ```
+Si necesitas usar una IP específica:
+```bash
+# Ejecuta con la IP de tu computadora
+flutter run --dart-define=API_BASE_URL=http://192.168.1.100:3000
+```
 
 #### Para Flutter Web:
-- Debe usar `http://localhost:3000`
+- Usa `http://localhost:3000` automáticamente en modo DEBUG
 - Verifica que el backend tenga CORS configurado para `localhost:8080`
+
+#### ⚠️ Importante: No ejecutes en modo RELEASE para desarrollo
+```bash
+flutter run  # ✅ Correcto - Modo DEBUG
+flutter run --release  # ❌ Incorrecto - Usará producción
+```
 
 ### ❌ Error: Puerto 3000 ya en uso
 

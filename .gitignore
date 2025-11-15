@@ -162,6 +162,8 @@ macos/Flutter/GeneratedPluginRegistrant.swift
 apps/backend/dist/
 apps/backend/node_modules/
 apps/backend/.env
+apps/backend/uploads/
+uploads/
 
 # Admin specific
 apps/admin/.next/

@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/user_model.dart';
 import '../models/auth_models.dart';
 import '../config/api_config.dart';
+import '../utils/logger.dart';
 
 class AuthService {
   static final AuthService _instance = AuthService._internal();
@@ -52,13 +53,13 @@ class AuthService {
       try {
         await _loadStoredAuthData();
       } catch (e) {
-        debugPrint('Error cargando datos guardados: $e');
+        AppLogger.error('Error cargando datos guardados', e);
         // Continuar sin datos guardados
       }
 
       _isInitialized = true;
     } catch (e) {
-      debugPrint('Error inicializando AuthService: $e');
+      AppLogger.error('Error inicializando AuthService', e);
       _isInitialized = true; // Marcar como inicializado de todos modos
     }
   }
@@ -94,7 +95,7 @@ class AuthService {
           // Solo loggear en modo debug
           if (const bool.fromEnvironment('dart.vm.product') == false) {
             // Usar debugPrint en lugar de print
-            debugPrint('Dio: $object');
+            AppLogger.network('Dio: $object');
           }
         },
       ),
@@ -120,7 +121,7 @@ class AuthService {
   /// Verificar conectividad
   Future<bool> _checkConnectivity() async {
     try {
-      debugPrint('🔍 Verificando conectividad a: ${ApiConfig.baseUrl}');
+      AppLogger.debug('Verificando conectividad a: ${ApiConfig.baseUrl}');
       
       // Crear una instancia temporal de Dio con timeouts más largos
       final tempDio = Dio();
@@ -133,13 +134,13 @@ class AuthService {
           ? '${ApiConfig.baseUrl}health'
           : '${ApiConfig.baseUrl}/health';
       
-      debugPrint('🌐 Intentando conectar a: $healthUrl');
+      AppLogger.network('Intentando conectar a: $healthUrl');
       final response = await tempDio.get(healthUrl);
-      debugPrint('✅ Conectividad OK: ${response.statusCode}');
+      AppLogger.success('Conectividad OK: ${response.statusCode}');
       return response.statusCode == 200;
     } catch (e) {
-      debugPrint('❌ Error de conectividad: $e');
-      debugPrint('📍 URL intentada: ${ApiConfig.baseUrl}');
+      AppLogger.error('Error de conectividad', e);
+      AppLogger.debug('URL intentada: ${ApiConfig.baseUrl}');
       
       // Si falla, intentar verificar conectividad de red básica
       try {
@@ -152,10 +153,10 @@ class AuthService {
             ? '${ApiConfig.baseUrl}health'
             : '${ApiConfig.baseUrl}/health';
         final response = await tempDio.get(testUrl, options: Options(validateStatus: (status) => status! < 500));
-        debugPrint('✅ Conectividad OK (fallback): ${response.statusCode}');
+        AppLogger.success('Conectividad OK (fallback): ${response.statusCode}');
         return true; // Si responde (aunque sea con error), hay conectividad
       } catch (e2) {
-        debugPrint('❌ Error de conectividad (fallback): $e2');
+        AppLogger.error('Error de conectividad (fallback)', e2);
         return false;
       }
     }
@@ -169,7 +170,7 @@ class AuthService {
     // Verificar conectividad pero no bloquear si falla - intentar directamente
     final hasConnectivity = await _checkConnectivity();
     if (!hasConnectivity) {
-      debugPrint('⚠️ Verificación de conectividad falló, pero intentando login de todas formas...');
+      AppLogger.warning('Verificación de conectividad falló, pero intentando login de todas formas...');
       // No lanzar error aquí, intentar el login directamente
     }
 
@@ -212,15 +213,15 @@ class AuthService {
     // Verificar conectividad pero no bloquear si falla - intentar directamente
     final hasConnectivity = await _checkConnectivity();
     if (!hasConnectivity) {
-      debugPrint('⚠️ Verificación de conectividad falló, pero intentando registro de todas formas...');
+      AppLogger.warning('Verificación de conectividad falló, pero intentando registro de todas formas...');
       // No lanzar error aquí, intentar el registro directamente
     }
 
     try {
       final url = '${ApiConfig.baseUrl}${ApiConfig.registerEndpoint}';
-      debugPrint('🚀 Intentando registrar en: $url');
-      debugPrint('🔗 Base URL completa: ${ApiConfig.baseUrl}');
-      debugPrint('🔗 Endpoint: ${ApiConfig.registerEndpoint}');
+      AppLogger.auth('Intentando registrar en: $url');
+      AppLogger.debug('Base URL completa: ${ApiConfig.baseUrl}');
+      AppLogger.debug('Endpoint: ${ApiConfig.registerEndpoint}');
       
       final response = await _dio.post(
         url,
@@ -239,23 +240,25 @@ class AuthService {
       );
 
       if (response.statusCode == 201 || response.statusCode == 200) {
-        debugPrint('🔍 Respuesta del backend: ${response.data}');
         try {
           // Debug: Verificar estructura antes de parsear
           final data = response.data as Map<String, dynamic>;
-          debugPrint('🔍 Estructura de datos:');
-          debugPrint('  - access_token: ${data['access_token'] != null ? "presente" : "ausente"}');
-          debugPrint('  - user: ${data['user'] != null ? "presente" : "ausente"}');
-          
-          if (data['user'] != null) {
-            final userData = data['user'] as Map<String, dynamic>;
-            debugPrint('  - user.id: ${userData['id']}');
-            debugPrint('  - user.email: ${userData['email']}');
-            debugPrint('  - user.username: ${userData['username']}');
-            debugPrint('  - user.first_name: ${userData['first_name']}');
-            debugPrint('  - user.last_name: ${userData['last_name']}');
-            debugPrint('  - user.role: ${userData['role']}');
-            debugPrint('  - user.subscription_status: ${userData['subscription_status']}');
+          if (kDebugMode) {
+            AppLogger.debug('Respuesta del backend: ${response.data}');
+            AppLogger.debug('Estructura de datos:');
+            AppLogger.debug('  - access_token: ${data['access_token'] != null ? "presente" : "ausente"}');
+            AppLogger.debug('  - user: ${data['user'] != null ? "presente" : "ausente"}');
+            
+            if (data['user'] != null) {
+              final userData = data['user'] as Map<String, dynamic>;
+              AppLogger.debug('  - user.id: ${userData['id']}');
+              AppLogger.debug('  - user.email: ${userData['email']}');
+              AppLogger.debug('  - user.username: ${userData['username']}');
+              AppLogger.debug('  - user.first_name: ${userData['first_name']}');
+              AppLogger.debug('  - user.last_name: ${userData['last_name']}');
+              AppLogger.debug('  - user.role: ${userData['role']}');
+              AppLogger.debug('  - user.subscription_status: ${userData['subscription_status']}');
+            }
           }
           
           // Validar que los campos requeridos del user no sean null
@@ -263,11 +266,11 @@ class AuthService {
             final userData = data['user'] as Map<String, dynamic>;
             // Asegurar que los campos requeridos no sean null
             if (userData['first_name'] == null && userData['firstName'] == null) {
-              debugPrint('❌ Error: first_name/firstName es null');
+              AppLogger.error('Error: first_name/firstName es null');
               throw AuthException('El campo first_name es requerido pero está ausente');
             }
             if (userData['last_name'] == null && userData['lastName'] == null) {
-              debugPrint('❌ Error: last_name/lastName es null');
+              AppLogger.error('Error: last_name/lastName es null');
               throw AuthException('El campo last_name es requerido pero está ausente');
             }
             
@@ -314,9 +317,8 @@ class AuthService {
           await _saveAuthData(authResponse);
           return authResponse;
         } catch (parseError, stackTrace) {
-          debugPrint('❌ Error parseando JSON: $parseError');
-          debugPrint('❌ Stack trace: $stackTrace');
-          debugPrint('❌ Datos recibidos: ${response.data}');
+          AppLogger.error('Error parseando JSON', parseError, stackTrace);
+          AppLogger.debug('Datos recibidos: ${response.data}');
           throw AuthException('Error parseando respuesta del servidor: $parseError');
         }
       } else {
@@ -341,7 +343,7 @@ class AuthService {
     // Verificar conectividad pero no bloquear
     final hasConnectivity = await _checkConnectivity();
     if (!hasConnectivity) {
-      debugPrint('⚠️ Verificación de conectividad falló, pero intentando de todas formas...');
+      AppLogger.warning('Verificación de conectividad falló, pero intentando de todas formas...');
     }
 
     try {
@@ -371,7 +373,7 @@ class AuthService {
     // Verificar conectividad pero no bloquear
     final hasConnectivity = await _checkConnectivity();
     if (!hasConnectivity) {
-      debugPrint('⚠️ Verificación de conectividad falló, pero intentando de todas formas...');
+      AppLogger.warning('Verificación de conectividad falló, pero intentando de todas formas...');
     }
 
     try {
@@ -405,7 +407,7 @@ class AuthService {
     // Verificar conectividad pero no bloquear
     final hasConnectivity = await _checkConnectivity();
     if (!hasConnectivity) {
-      debugPrint('⚠️ Verificación de conectividad falló, pero intentando de todas formas...');
+      AppLogger.warning('Verificación de conectividad falló, pero intentando de todas formas...');
     }
 
     try {
@@ -464,10 +466,10 @@ class AuthService {
   /// Manejar errores de Dio
   AuthException _handleDioError(DioException e) {
     // Log detallado del error
-    debugPrint('❌ Error Dio: ${e.type}');
-    debugPrint('❌ Mensaje: ${e.message}');
-    debugPrint('❌ URL: ${e.requestOptions.uri}');
-    debugPrint('❌ Response: ${e.response?.statusCode} - ${e.response?.data}');
+    AppLogger.error('Error Dio: ${e.type}');
+    AppLogger.error('Mensaje: ${e.message}');
+    AppLogger.error('URL: ${e.requestOptions.uri}');
+    AppLogger.error('Response: ${e.response?.statusCode} - ${e.response?.data}');
     
     switch (e.type) {
       case DioExceptionType.connectionTimeout:
@@ -477,7 +479,7 @@ class AuthService {
       
       case DioExceptionType.connectionError:
         // Verificar si es un problema de DNS o conectividad
-        debugPrint('❌ Error de conexión: ${e.message}');
+        AppLogger.error('Error de conexión: ${e.message}');
         if (e.message?.contains('Failed host lookup') == true || 
             e.message?.contains('Unable to resolve host') == true) {
           return AuthException('No se puede resolver el servidor. Verifica tu conexión a internet.');

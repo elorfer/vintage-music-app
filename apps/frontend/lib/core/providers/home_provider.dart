@@ -1,9 +1,9 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/home_service.dart';
 import '../models/artist_model.dart';
 import '../models/song_model.dart';
 import '../models/playlist_model.dart';
+import '../utils/logger.dart';
 
 /// Provider para el servicio de home
 final homeServiceProvider = Provider<HomeService>((ref) {
@@ -99,41 +99,41 @@ class HomeNotifier extends Notifier<HomeState> {
       // Cargar artistas destacados
       try {
         featuredArtists = await _homeService.getFeaturedArtists(limit: 6);
-        debugPrint('✅ HomeProvider: Artistas destacados cargados: ${featuredArtists.length}');
+        AppLogger.success('HomeProvider: Artistas destacados cargados: ${featuredArtists.length}');
       } catch (e) {
-        debugPrint('❌ HomeProvider: Error cargando artistas destacados: $e');
+        AppLogger.error('HomeProvider: Error cargando artistas destacados', e);
       }
 
-      // Cargar canciones destacadas
+      // Cargar canciones destacadas (aumentar límite para asegurar que se muestren todas)
       try {
-        featuredSongs = await _homeService.getFeaturedSongs(limit: 8);
-        debugPrint('✅ HomeProvider: Canciones destacadas cargadas: ${featuredSongs.length}');
+        featuredSongs = await _homeService.getFeaturedSongs(limit: 20);
+        AppLogger.success('HomeProvider: Canciones destacadas cargadas: ${featuredSongs.length}');
       } catch (e) {
-        debugPrint('❌ HomeProvider: Error cargando canciones destacadas: $e');
+        AppLogger.error('HomeProvider: Error cargando canciones destacadas', e);
       }
 
       // Cargar playlists destacadas
       try {
         featuredPlaylists = await _homeService.getFeaturedPlaylists(limit: 6);
-        debugPrint('✅ HomeProvider: Playlists destacadas cargadas: ${featuredPlaylists.length}');
+        AppLogger.success('HomeProvider: Playlists destacadas cargadas: ${featuredPlaylists.length}');
       } catch (e) {
-        debugPrint('❌ HomeProvider: Error cargando playlists destacadas: $e');
+        AppLogger.error('HomeProvider: Error cargando playlists destacadas', e);
       }
 
       // Cargar canciones populares
       try {
         popularSongs = await _homeService.getPopularSongs(limit: 10);
-        debugPrint('✅ HomeProvider: Canciones populares cargadas: ${popularSongs.length}');
+        AppLogger.success('HomeProvider: Canciones populares cargadas: ${popularSongs.length}');
       } catch (e) {
-        debugPrint('❌ HomeProvider: Error cargando canciones populares: $e');
+        AppLogger.error('HomeProvider: Error cargando canciones populares', e);
       }
 
       // Cargar artistas top
       try {
         topArtists = await _homeService.getTopArtists(limit: 8);
-        debugPrint('✅ HomeProvider: Artistas top cargados: ${topArtists.length}');
+        AppLogger.success('HomeProvider: Artistas top cargados: ${topArtists.length}');
       } catch (e) {
-        debugPrint('❌ HomeProvider: Error cargando artistas top: $e');
+        AppLogger.error('HomeProvider: Error cargando artistas top', e);
       }
 
       state = state.copyWith(
@@ -147,9 +147,9 @@ class HomeNotifier extends Notifier<HomeState> {
         isInitialized: true,
       );
 
-      debugPrint('🎉 HomeProvider: Datos cargados exitosamente');
+      AppLogger.success('HomeProvider: Datos cargados exitosamente');
     } catch (e) {
-      debugPrint('❌ HomeProvider: Error general: $e');
+      AppLogger.error('HomeProvider: Error general', e);
       state = state.copyWith(
         isLoading: false,
         error: 'Error al cargar datos: $e',
@@ -158,9 +158,78 @@ class HomeNotifier extends Notifier<HomeState> {
     }
   }
 
-  /// Refrescar datos
+  /// Refrescar datos (forzar refresh sin caché)
   Future<void> refresh() async {
-    await loadHomeData();
+    try {
+      state = state.copyWith(isLoading: true, error: null);
+
+      // Cargar datos individualmente para manejar errores por separado
+      List<FeaturedArtist> featuredArtists = [];
+      List<FeaturedSong> featuredSongs = [];
+      List<FeaturedPlaylist> featuredPlaylists = [];
+      List<Song> popularSongs = [];
+      List<Artist> topArtists = [];
+
+      // Cargar artistas destacados
+      try {
+        featuredArtists = await _homeService.getFeaturedArtists(limit: 6);
+        AppLogger.success('HomeProvider: Artistas destacados cargados (refresh): ${featuredArtists.length}');
+      } catch (e) {
+        AppLogger.error('HomeProvider: Error cargando artistas destacados (refresh)', e);
+      }
+
+      // Cargar canciones destacadas con forceRefresh para evitar caché
+      try {
+        featuredSongs = await _homeService.getFeaturedSongs(limit: 20, forceRefresh: true);
+        AppLogger.success('HomeProvider: Canciones destacadas cargadas (refresh): ${featuredSongs.length}');
+      } catch (e) {
+        AppLogger.error('HomeProvider: Error cargando canciones destacadas (refresh)', e);
+      }
+
+      // Cargar playlists destacadas
+      try {
+        featuredPlaylists = await _homeService.getFeaturedPlaylists(limit: 6);
+        AppLogger.success('HomeProvider: Playlists destacadas cargadas (refresh): ${featuredPlaylists.length}');
+      } catch (e) {
+        AppLogger.error('HomeProvider: Error cargando playlists destacadas (refresh)', e);
+      }
+
+      // Cargar canciones populares
+      try {
+        popularSongs = await _homeService.getPopularSongs(limit: 10);
+        AppLogger.success('HomeProvider: Canciones populares cargadas (refresh): ${popularSongs.length}');
+      } catch (e) {
+        AppLogger.error('HomeProvider: Error cargando canciones populares (refresh)', e);
+      }
+
+      // Cargar artistas top
+      try {
+        topArtists = await _homeService.getTopArtists(limit: 8);
+        AppLogger.success('HomeProvider: Artistas top cargados (refresh): ${topArtists.length}');
+      } catch (e) {
+        AppLogger.error('HomeProvider: Error cargando artistas top (refresh)', e);
+      }
+
+      state = state.copyWith(
+        featuredArtists: featuredArtists,
+        featuredSongs: featuredSongs,
+        featuredPlaylists: featuredPlaylists,
+        popularSongs: popularSongs,
+        topArtists: topArtists,
+        isLoading: false,
+        error: null,
+        isInitialized: true,
+      );
+
+      AppLogger.success('HomeProvider: Datos refrescados exitosamente');
+    } catch (e) {
+      AppLogger.error('HomeProvider: Error general en refresh', e);
+      state = state.copyWith(
+        isLoading: false,
+        error: 'Error al refrescar datos: $e',
+        isInitialized: true,
+      );
+    }
   }
 
   /// Cargar solo artistas destacados
@@ -174,10 +243,11 @@ class HomeNotifier extends Notifier<HomeState> {
   }
 
   /// Cargar solo canciones destacadas
-  Future<void> loadFeaturedSongs() async {
+  Future<void> loadFeaturedSongs({bool forceRefresh = false}) async {
     try {
-      final songs = await _homeService.getFeaturedSongs(limit: 8);
+      final songs = await _homeService.getFeaturedSongs(limit: 20, forceRefresh: forceRefresh);
       state = state.copyWith(featuredSongs: songs);
+      AppLogger.success('HomeProvider: Canciones destacadas actualizadas: ${songs.length}');
     } catch (e) {
       state = state.copyWith(error: 'Error al cargar canciones: $e');
     }

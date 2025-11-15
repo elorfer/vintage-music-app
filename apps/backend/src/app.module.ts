@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
+import { BullModule } from '@nestjs/bull';
 // import { RedisModule } from '@nestjs/redis';
 
 // Módulos de la aplicación
@@ -13,10 +14,12 @@ import { SongsModule } from './modules/songs/songs.module';
 import { PlaylistsModule } from './modules/playlists/playlists.module';
 import { StreamingModule } from './modules/streaming/streaming.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
-import { PaymentsModule } from './modules/payments/payments.module';
+// import { PaymentsModule } from './modules/payments/payments.module';  // Deshabilitado - Pagos no implementados aún
 import { UploadModule } from './modules/upload/upload.module';
+import { CoversModule } from './modules/covers/covers.module';
 import { HealthModule } from './modules/health/health.module';
 import { PublicModule } from './modules/public/public.module';
+import { FeaturedModule } from './modules/featured/featured.module';
 import { entities } from './database/entities';
 
 // Configuración de la base de datos
@@ -125,6 +128,45 @@ import { dataSourceOptions } from './database/data-source';
     // Tareas programadas
     ScheduleModule.forRoot(),
 
+    // BullMQ para colas de procesamiento
+    // Nota: Solo se inicializa si Redis está disponible
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => {
+        // Priorizar REDIS_URL si está disponible (para Docker)
+        const redisUrl = configService.get<string>('REDIS_URL');
+        
+        let redisConfig: any = {
+          maxRetriesPerRequest: null,
+          enableReadyCheck: false,
+        };
+        
+        if (redisUrl) {
+          // Parsear REDIS_URL (formato: redis://[password@]host:port)
+          const url = new URL(redisUrl);
+          redisConfig.host = url.hostname;
+          redisConfig.port = parseInt(url.port) || 6379;
+          if (url.password) {
+            redisConfig.password = url.password;
+          }
+        } else {
+          // Fallback a REDIS_HOST y REDIS_PORT
+          redisConfig.host = configService.get<string>('REDIS_HOST') || 'localhost';
+          redisConfig.port = configService.get<number>('REDIS_PORT') || 6379;
+          
+          const password = configService.get<string>('REDIS_PASSWORD');
+          if (password) {
+            redisConfig.password = password;
+          }
+        }
+        
+        return {
+          redis: redisConfig,
+        };
+      },
+      inject: [ConfigService],
+    }),
+
     // Módulos de la aplicación
     HealthModule,
     AuthModule,
@@ -134,9 +176,11 @@ import { dataSourceOptions } from './database/data-source';
     PlaylistsModule,
     StreamingModule,
     AnalyticsModule,
-    PaymentsModule,
+    // PaymentsModule,  // Deshabilitado - Pagos no implementados aún
     UploadModule,
+    CoversModule,
     PublicModule,
+    FeaturedModule,
   ],
 })
 export class AppModule {}

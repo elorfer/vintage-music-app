@@ -21,12 +21,17 @@ export class ArtistsService {
   ) {}
 
   async findAll(page: number = 1, limit: number = 10): Promise<{ artists: Artist[]; total: number }> {
-    const [artists, total] = await this.artistRepository.findAndCount({
-      relations: ['user', 'songs', 'albums'],
-      skip: (page - 1) * limit,
-      take: limit,
-      order: { createdAt: 'DESC' },
-    });
+    // Filtrar solo artistas cuyo usuario tiene rol 'artist'
+    const [artists, total] = await this.artistRepository
+      .createQueryBuilder('artist')
+      .leftJoinAndSelect('artist.user', 'user')
+      .leftJoinAndSelect('artist.songs', 'songs')
+      .leftJoinAndSelect('artist.albums', 'albums')
+      .where('user.role = :role', { role: 'artist' })
+      .orderBy('artist.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
 
     return { artists, total };
   }

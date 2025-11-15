@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/models/song_model.dart';
+import '../../../core/utils/logger.dart';
 
 class FeaturedSongCard extends StatelessWidget {
   final FeaturedSong featuredSong;
@@ -49,13 +51,44 @@ class FeaturedSongCard extends StatelessWidget {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: song.coverArtUrl != null
-                    ? Image.network(
-                        song.coverArtUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => _buildDefaultCover(),
+                child: song.coverArtUrl != null && song.coverArtUrl!.isNotEmpty
+                    ? Builder(
+                        builder: (context) {
+                          if (kDebugMode) {
+                            AppLogger.media('FeaturedSongCard: Intentando cargar portada: ${song.coverArtUrl}');
+                          }
+                          return Image.network(
+                            song.coverArtUrl!,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) {
+                                if (kDebugMode) {
+                                  AppLogger.success('FeaturedSongCard: Portada cargada exitosamente');
+                                }
+                                return child;
+                              }
+                              if (kDebugMode) {
+                                AppLogger.loading('FeaturedSongCard: Cargando portada... ${(loadingProgress.cumulativeBytesLoaded / (loadingProgress.expectedTotalBytes ?? 1) * 100).toStringAsFixed(0)}%');
+                              }
+                              return _buildDefaultCover();
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              if (kDebugMode) {
+                                AppLogger.error('FeaturedSongCard: Error cargando portada: ${song.coverArtUrl}', error, stackTrace);
+                              }
+                              return _buildDefaultCover();
+                            },
+                          );
+                        },
                       )
-                    : _buildDefaultCover(),
+                    : Builder(
+                        builder: (context) {
+                          if (kDebugMode) {
+                            AppLogger.warning('FeaturedSongCard: No hay URL de portada para: ${song.title}');
+                          }
+                          return _buildDefaultCover();
+                        },
+                      ),
               ),
             ),
             
@@ -81,7 +114,7 @@ class FeaturedSongCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   
                   Text(
-                    song.artist?.stageName ?? 'Artista desconocido',
+                    _getArtistName(song),
                     style: GoogleFonts.inter(
                       fontSize: 12,
                       color: Colors.white.withValues(alpha: 0.7),
@@ -166,5 +199,53 @@ class FeaturedSongCard extends StatelessWidget {
     } else {
       return number.toString();
     }
+  }
+
+  String _getArtistName(Song song) {
+    if (kDebugMode) {
+      AppLogger.artist('_getArtistName para canción: ${song.title}');
+      AppLogger.debug('   - song.artist es null: ${song.artist == null}');
+      if (song.artist != null) {
+        AppLogger.debug('   - artist.id: ${song.artist!.id}');
+        AppLogger.debug('   - artist.stageName: ${song.artist!.stageName}');
+        AppLogger.debug('   - artist.displayName: ${song.artist!.displayName}');
+        AppLogger.debug('   - artist.userId: ${song.artist!.userId}');
+      }
+    }
+    
+    // Intentar obtener el nombre del artista de múltiples formas
+    if (song.artist != null) {
+      // Primero intentar stageName (nombre artístico)
+      final stageName = song.artist!.stageName;
+      if (stageName != null && stageName.isNotEmpty && stageName.trim().isNotEmpty) {
+        if (kDebugMode) {
+          AppLogger.success('Usando stageName: $stageName');
+        }
+        return stageName;
+      }
+      
+      // Si no hay stageName, usar displayName (que tiene fallback interno)
+      final displayName = song.artist!.displayName;
+      if (displayName.isNotEmpty && displayName != 'Artista Desconocido' && displayName.trim().isNotEmpty) {
+        if (kDebugMode) {
+          AppLogger.success('Usando displayName: $displayName');
+        }
+        return displayName;
+      }
+      
+      if (kDebugMode) {
+        AppLogger.warning('No se encontró nombre válido en el artista');
+      }
+    } else {
+      if (kDebugMode) {
+        AppLogger.warning('song.artist es null');
+      }
+    }
+    
+    // Fallback final si no hay artista o no tiene nombre
+    if (kDebugMode) {
+      AppLogger.error('Retornando fallback: Artista desconocido');
+    }
+    return 'Artista desconocido';
   }
 }

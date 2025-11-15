@@ -38,9 +38,17 @@ class HomeScreen extends ConsumerWidget {
         ),
       ),
       child: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
+        child: RefreshIndicator(
+          onRefresh: () async {
+            final homeNotifier = ref.read(homeStateProvider.notifier);
+            await homeNotifier.refresh();
+          },
+          color: Colors.white,
+          backgroundColor: const Color(0xFF667eea),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(), // Necesario para que funcione el RefreshIndicator
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Header con avatar y bienvenida
@@ -139,6 +147,7 @@ class HomeScreen extends ConsumerWidget {
 
               const SizedBox(height: 24),
             ],
+            ),
           ),
         ),
       ),

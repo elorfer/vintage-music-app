@@ -76,6 +76,9 @@ export class Song {
   @Column({ name: 'total_shares', default: 0 })
   totalShares: number;
 
+  @Column({ name: 'is_featured', default: false })
+  isFeatured: boolean;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

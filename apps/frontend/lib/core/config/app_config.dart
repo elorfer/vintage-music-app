@@ -1,48 +1,82 @@
+import 'package:flutter/foundation.dart';
+import '../utils/logger.dart';
+
 class AppConfig {
   // Configuración de la aplicación
   static const String appName = 'Vintage Music';
   static const String appVersion = '1.0.0';
 
+  // URLs de configuración
+  static const String _productionUrl = 'http://backend-alb-1038609925.us-east-1.elb.amazonaws.com';
+  static const String _developmentUrlAndroid = 'http://10.0.2.2:3000'; // Emulador Android y dispositivos móviles
+  static const String _developmentUrlWeb = 'http://localhost:3000'; // Flutter Web
+
   // Configuración de la API
-  // Usa localhost para desarrollo web, 10.0.2.2 para emulador Android, o tu IP local para dispositivo físico
+  // En modo DEBUG: usa localhost/10.0.2.2 automáticamente
+  // En modo RELEASE: usa producción (o variable de entorno si está definida)
   static final String baseUrl = _resolveBaseUrl();
 
   static String _resolveBaseUrl() {
-    // Intentar obtener la URL desde variables de entorno
+    // 1. Prioridad: Variable de entorno (siempre tiene precedencia)
     final rawBaseUrl = String.fromEnvironment(
       'API_BASE_URL',
       defaultValue: '',
     );
 
-    // Si no hay URL desde environment, usar la URL de producción por defecto
-    final urlToUse = rawBaseUrl.isEmpty 
-        ? 'http://backend-alb-1038609925.us-east-1.elb.amazonaws.com'
-        : rawBaseUrl;
+    if (rawBaseUrl.isNotEmpty) {
+      AppLogger.config('Usando URL desde variable de entorno: $rawBaseUrl');
+      return _buildFinalUrl(rawBaseUrl);
+    }
 
+    // 2. Si está en modo DEBUG, usar desarrollo automáticamente
+    if (kDebugMode) {
+      final devUrl = _getDevelopmentUrl();
+      AppLogger.config('MODO DEBUG: Usando URL de desarrollo: $devUrl');
+      return _buildFinalUrl(devUrl);
+    }
+
+    // 3. Si está en modo RELEASE, usar producción
+    AppLogger.config('MODO RELEASE: Usando URL de producción: $_productionUrl');
+    return _buildFinalUrl(_productionUrl);
+  }
+
+  static String _getDevelopmentUrl() {
+    // Detectar plataforma sin usar dart:io (compatible con web)
+    if (kIsWeb) {
+      return _developmentUrlWeb;
+    }
+    
+    // Para móvil, usar la URL de Android por defecto (funciona en emulador)
+    // En dispositivos físicos, el usuario puede usar --dart-define si necesita otra IP
+    return _developmentUrlAndroid;
+  }
+
+  static String _buildFinalUrl(String baseUrl) {
     try {
-      final uri = Uri.parse(urlToUse);
+      final uri = Uri.parse(baseUrl);
       // Siempre agregar api/v1 al final
       final segments = <String>[
         for (final segment in uri.pathSegments)
           if (segment.isNotEmpty) segment,
       ];
       
-      segments.addAll(['api', 'v1']);
+      // Solo agregar api/v1 si no está ya presente
+      if (!segments.contains('api') || !segments.contains('v1')) {
+        segments.addAll(['api', 'v1']);
+      }
 
       final finalUrl = _removeTrailingSlash(
         uri.replace(pathSegments: segments).toString(),
       );
       
-      // Debug: imprimir la URL que se está usando
-      print('🔗 API Base URL configurada: $finalUrl');
-      print('🔗 URL raw desde environment: $rawBaseUrl');
-      print('🔗 URL final usada: $urlToUse');
-      
       return finalUrl;
     } catch (e) {
-      print('⚠️ Error al parsear URL, usando producción por defecto: $e');
-      // Usar URL de producción por defecto en lugar de localhost
-      return 'http://backend-alb-1038609925.us-east-1.elb.amazonaws.com/api/v1';
+      AppLogger.warning('Error al parsear URL: $e');
+      // Fallback seguro: usar desarrollo si está en debug, producción si no
+      final fallbackUrl = kDebugMode 
+          ? _getDevelopmentUrl()
+          : _productionUrl;
+      return '$fallbackUrl/api/v1';
     }
   }
 

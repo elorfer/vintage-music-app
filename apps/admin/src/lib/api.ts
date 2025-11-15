@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const normalizeApiBaseUrl = (url?: string) => {
-  const fallback = 'http://localhost:3000';
+  const fallback = 'http://localhost:3001';
   const rawUrl = (url && url.trim().length > 0 ? url : fallback).trim();
   const trimmed = rawUrl.replace(/\/+$/, '');
 
@@ -24,6 +24,15 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+});
+
+// Interceptor para eliminar Content-Type cuando se envía FormData
+api.interceptors.request.use((config) => {
+  if (config.data instanceof FormData) {
+    // Eliminar Content-Type para que el navegador establezca el boundary correcto
+    delete config.headers['Content-Type'];
+  }
+  return config;
 });
 
 // Request interceptor para agregar el token de autenticación
@@ -85,7 +94,7 @@ export const apiClient = {
   verifyUser: (id: string) => api.post(`/users/${id}/verify`),
 
   // Artists
-  getArtists: (page = 1, limit = 10) =>
+  getArtists: (page = 1, limit = 100) =>
     api.get(`/artists?page=${page}&limit=${limit}`),
   
   getArtist: (id: string) => api.get(`/artists/${id}`),
@@ -95,12 +104,48 @@ export const apiClient = {
   verifyArtist: (id: string) => api.patch(`/artists/${id}/verify`),
 
   // Songs
-  getSongs: (page = 1, limit = 10) =>
-    api.get(`/songs?page=${page}&limit=${limit}`),
+  getSongs: (page = 1, limit = 10, all = true) =>
+    api.get(`/songs?page=${page}&limit=${limit}&all=${all}`),
   
   getSong: (id: string) => api.get(`/songs/${id}`),
   
   getTopSongsByPlays: (limit = 10) => api.get(`/songs/top?limit=${limit}`),
+  
+  uploadSong: (audioFile: File, coverFile: File | undefined, songData: {
+    title: string;
+    artistId: string;
+    albumId?: string;
+    genreId?: string;
+    status?: string;
+    duration?: number;
+  }) => {
+    const formData = new FormData();
+    formData.append('audio', audioFile);
+    if (coverFile) {
+      formData.append('cover', coverFile);
+    }
+    formData.append('title', songData.title);
+    formData.append('artistId', songData.artistId);
+    if (songData.albumId) {
+      formData.append('albumId', songData.albumId);
+    }
+    if (songData.genreId) {
+      formData.append('genreId', songData.genreId);
+    }
+    if (songData.status) {
+      formData.append('status', songData.status);
+    }
+    if (songData.duration !== undefined) {
+      formData.append('duration', songData.duration.toString());
+    }
+    return api.post('/songs/upload', formData);
+  },
+  
+  createSong: (data: any) => api.post('/songs', data),
+  
+  updateSong: (id: string, data: any) => api.patch(`/songs/${id}`, data),
+  
+  deleteSong: (id: string) => api.delete(`/songs/${id}`),
 
   // Playlists
   getPlaylists: (page = 1, limit = 10) =>
@@ -122,6 +167,19 @@ export const apiClient = {
   getPayment: (id: string) => api.get(`/payments/${id}`),
   
   refundPayment: (id: string) => api.post(`/payments/${id}/refund`),
+
+  // Featured Content
+  getFeaturedSongs: (limit = 10) => api.get(`/featured/songs?limit=${limit}`),
+  featureSong: (id: string) => api.post(`/featured/songs/${id}/feature`),
+  unfeatureSong: (id: string) => api.delete(`/featured/songs/${id}/feature`),
+
+  getFeaturedArtists: (limit = 10) => api.get(`/featured/artists?limit=${limit}`),
+  featureArtist: (id: string) => api.post(`/featured/artists/${id}/feature`),
+  unfeatureArtist: (id: string) => api.delete(`/featured/artists/${id}/feature`),
+
+  getFeaturedPlaylists: (limit = 10) => api.get(`/featured/playlists?limit=${limit}`),
+  featurePlaylist: (id: string) => api.post(`/featured/playlists/${id}/feature`),
+  unfeaturePlaylist: (id: string) => api.delete(`/featured/playlists/${id}/feature`),
 };
 
 export default api;

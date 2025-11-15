@@ -47,6 +47,9 @@ export class Artist {
   @Column({ name: 'monthly_listeners', default: 0 })
   monthlyListeners: number;
 
+  @Column({ name: 'is_featured', default: false })
+  isFeatured: boolean;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

@@ -70,7 +70,7 @@ export interface Config {
 }
 
 const normalizeApiBaseUrl = (url?: string) => {
-  const fallback = 'http://localhost:3000';
+  const fallback = 'http://localhost:3001';
   const rawUrl = (url && url.trim().length > 0 ? url : fallback).trim();
   const trimmed = rawUrl.replace(/\/+$/, '');
 

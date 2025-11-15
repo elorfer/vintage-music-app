@@ -9,6 +9,7 @@ import { PlaylistFollower } from '../common/entities/playlist-follower.entity';
 import { PlaylistSong } from '../common/entities/playlist-song.entity';
 import { Song } from '../common/entities/song.entity';
 import { SongLike } from '../common/entities/song-like.entity';
+import { SongUpload } from '../common/entities/song-upload.entity';
 import { StreamingStats } from '../common/entities/streaming-stats.entity';
 import { User } from '../common/entities/user.entity';
 
@@ -24,6 +25,7 @@ export const entities = [
   PlaylistSong,
   Song,
   SongLike,
+  SongUpload,
   StreamingStats,
   User,
 ];

@@ -52,9 +52,9 @@ services:
       AWS_REGION: ${AWS_REGION}
       AWS_S3_BUCKET: ${AWS_S3_BUCKET}
       CLOUDFRONT_DOMAIN: ${CLOUDFRONT_DOMAIN}
-      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
-      PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID}
-      PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET}
+      # STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}  # Deshabilitado - No disponible en Colombia
+      # PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID}  # Deshabilitado - Pagos no implementados aún
+      # PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET}  # Deshabilitado - Pagos no implementados aún
     ports:
       - "3000:3000"
     depends_on:
@@ -69,7 +69,7 @@ services:
           memory: 1G
         reservations:
           memory: 512M
-      replicas: 2
+      replicas: 1  # Reducido a 1 para optimizar costos
 
   # Panel de Admin para producción
   admin:
