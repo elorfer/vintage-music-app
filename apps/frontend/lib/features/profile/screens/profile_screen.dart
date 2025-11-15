@@ -4,12 +4,25 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/providers/auth_provider.dart';
 
-class ProfileScreen extends ConsumerWidget {
+/// ProfileScreen optimizado con AutomaticKeepAliveClientMixin
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final authState = ref.watch(authStateProvider);
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends ConsumerState<ProfileScreen>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true; // Mantener estado al cambiar de pestaña
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context); // Requerido por AutomaticKeepAliveClientMixin
+    
+    // Usar ref.read cuando solo necesitamos el valor una vez (no reconstruir)
+    final authState = ref.read(authStateProvider);
     final user = authState.user;
 
     return Scaffold(

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/models/song_model.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/widgets/optimized_image.dart';
 
 class FeaturedSongCard extends StatelessWidget {
   final FeaturedSong featuredSong;
@@ -51,44 +52,14 @@ class FeaturedSongCard extends StatelessWidget {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: song.coverArtUrl != null && song.coverArtUrl!.isNotEmpty
-                    ? Builder(
-                        builder: (context) {
-                          if (kDebugMode) {
-                            AppLogger.media('FeaturedSongCard: Intentando cargar portada: ${song.coverArtUrl}');
-                          }
-                          return Image.network(
-                            song.coverArtUrl!,
-                            fit: BoxFit.cover,
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) {
-                                if (kDebugMode) {
-                                  AppLogger.success('FeaturedSongCard: Portada cargada exitosamente');
-                                }
-                                return child;
-                              }
-                              if (kDebugMode) {
-                                AppLogger.loading('FeaturedSongCard: Cargando portada... ${(loadingProgress.cumulativeBytesLoaded / (loadingProgress.expectedTotalBytes ?? 1) * 100).toStringAsFixed(0)}%');
-                              }
-                              return _buildDefaultCover();
-                            },
-                            errorBuilder: (context, error, stackTrace) {
-                              if (kDebugMode) {
-                                AppLogger.error('FeaturedSongCard: Error cargando portada: ${song.coverArtUrl}', error, stackTrace);
-                              }
-                              return _buildDefaultCover();
-                            },
-                          );
-                        },
-                      )
-                    : Builder(
-                        builder: (context) {
-                          if (kDebugMode) {
-                            AppLogger.warning('FeaturedSongCard: No hay URL de portada para: ${song.title}');
-                          }
-                          return _buildDefaultCover();
-                        },
-                      ),
+                child: OptimizedImage(
+                  imageUrl: song.coverArtUrl,
+                  fit: BoxFit.cover,
+                  width: 56,
+                  height: 56,
+                  borderRadius: 8,
+                  placeholderColor: const Color(0xFF667eea).withValues(alpha: 0.3),
+                ),
               ),
             ),
             
@@ -167,26 +138,6 @@ class FeaturedSongCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildDefaultCover() {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFF667eea),
-            const Color(0xFF764ba2),
-          ],
-        ),
-      ),
-      child: const Icon(
-        Icons.music_note,
-        color: Colors.white,
-        size: 24,
       ),
     );
   }

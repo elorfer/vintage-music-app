@@ -2,11 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class SearchScreen extends ConsumerWidget {
+/// SearchScreen optimizado con AutomaticKeepAliveClientMixin
+class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SearchScreen> createState() => _SearchScreenState();
+}
+
+class _SearchScreenState extends ConsumerState<SearchScreen>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true; // Mantener estado al cambiar de pestaña
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context); // Requerido por AutomaticKeepAliveClientMixin
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(

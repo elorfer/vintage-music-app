@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/models/playlist_model.dart';
+import '../../../core/widgets/optimized_image.dart';
 
 class FeaturedPlaylistCard extends StatelessWidget {
   final FeaturedPlaylist featuredPlaylist;
@@ -41,31 +41,14 @@ class FeaturedPlaylistCard extends StatelessWidget {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: playlist.coverArtUrl != null && playlist.coverArtUrl!.isNotEmpty
-                    ? CachedNetworkImage(
-                        imageUrl: playlist.coverArtUrl!,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                const Color(0xFF667eea),
-                                const Color(0xFF764ba2),
-                              ],
-                            ),
-                          ),
-                          child: const Center(
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          ),
-                        ),
-                        errorWidget: (context, url, error) => _buildDefaultCover(),
-                      )
-                    : _buildDefaultCover(),
+                child: OptimizedImage(
+                  imageUrl: playlist.coverArtUrl,
+                  fit: BoxFit.cover,
+                  width: 160,
+                  height: 160,
+                  borderRadius: 12,
+                  placeholderColor: const Color(0xFF667eea).withValues(alpha: 0.3),
+                ),
               ),
             ),
             
@@ -159,28 +142,6 @@ class FeaturedPlaylistCard extends StatelessWidget {
               ),
             ],
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDefaultCover() {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFF667eea),
-            const Color(0xFF764ba2),
-          ],
-        ),
-      ),
-      child: const Center(
-        child: Icon(
-          Icons.queue_music,
-          color: Colors.white,
-          size: 48,
         ),
       ),
     );

@@ -109,9 +109,15 @@ class Playlist {
   }
 
   String get durationFormatted {
-    if (totalDuration == null) return '0m';
-    final hours = totalDuration! ~/ 3600;
-    final minutes = (totalDuration! % 3600) ~/ 60;
+    if (totalDuration == null || totalDuration! <= 0) return '0m';
+    
+    // Validar que no sea infinito o NaN
+    final duration = totalDuration!.toDouble();
+    if (!duration.isFinite || duration.isNaN) return '0m';
+    
+    final totalSeconds = duration.toInt();
+    final hours = totalSeconds ~/ 3600;
+    final minutes = (totalSeconds % 3600) ~/ 60;
     
     if (hours > 0) {
       return '${hours}h ${minutes}m';

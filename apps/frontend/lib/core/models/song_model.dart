@@ -64,9 +64,15 @@ class Song {
   Map<String, dynamic> toJson() => _$SongToJson(this);
 
   String get durationFormatted {
-    if (duration == null) return '00:00';
-    final minutes = duration! ~/ 60;
-    final seconds = duration! % 60;
+    if (duration == null || duration! <= 0) return '00:00';
+    
+    // Validar que no sea infinito o NaN
+    final durationValue = duration!.toDouble();
+    if (!durationValue.isFinite || durationValue.isNaN) return '00:00';
+    
+    final totalSeconds = durationValue.toInt();
+    final minutes = totalSeconds ~/ 60;
+    final seconds = totalSeconds % 60;
     return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
   }
 

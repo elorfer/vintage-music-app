@@ -1,10 +1,11 @@
-import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
+import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../utils/logger.dart';
 import '../config/api_config.dart';
 import '../models/playlist_model.dart';
 import '../models/song_model.dart';
+import 'http_cache_service.dart';
 
 class PlaylistService {
   static final PlaylistService _instance = PlaylistService._internal();
@@ -32,6 +33,14 @@ class PlaylistService {
     if (_dio == null) return;
     
     _dio!.interceptors.clear(); // Limpiar interceptores existentes
+    
+    // Agregar caché HTTP si está disponible
+    if (HttpCacheService.cacheOptions != null) {
+      _dio!.interceptors.add(
+        DioCacheInterceptor(options: HttpCacheService.cacheOptions!),
+      );
+    }
+    
     _dio!.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
@@ -53,18 +62,7 @@ class PlaylistService {
       ),
     );
 
-    // Interceptor de logging (solo en debug)
-    _dio!.interceptors.add(
-      LogInterceptor(
-        requestBody: false,
-        responseBody: false,
-        logPrint: (object) {
-          if (kDebugMode) {
-            AppLogger.debug('PlaylistService: $object');
-          }
-        },
-      ),
-    );
+    // LogInterceptor deshabilitado para mejor rendimiento
   }
 
   /// Obtener todas las playlists
@@ -78,7 +76,6 @@ class PlaylistService {
         return [];
       }
       
-      AppLogger.playlist('PlaylistService: Obteniendo playlists desde ${ApiConfig.baseUrl}/public/playlists');
       final response = await _dio!.get(
         '${ApiConfig.baseUrl}/public/playlists',
         queryParameters: {
@@ -86,7 +83,6 @@ class PlaylistService {
           'limit': limit,
         },
       );
-      AppLogger.network('PlaylistService: Respuesta playlists - Status: ${response.statusCode}');
 
       if (response.statusCode == 200 && response.data != null) {
         final List<dynamic> data = response.data is Map<String, dynamic>
@@ -96,7 +92,6 @@ class PlaylistService {
         final validData = data.where((item) => item != null && item is Map<String, dynamic>).toList();
         
         if (validData.isEmpty) {
-          AppLogger.warning('PlaylistService: No hay playlists disponibles');
           return [];
         }
         
@@ -137,7 +132,6 @@ class PlaylistService {
       
       final url = '${ApiConfig.baseUrl}/public/playlists/${id.trim()}';
       final response = await _dio!.get(url);
-      AppLogger.network('PlaylistService: Respuesta playlist - Status: ${response.statusCode}');
 
       if (response.statusCode == 200 && response.data != null) {
         try {
@@ -152,30 +146,12 @@ class PlaylistService {
             playlist = Playlist.fromJson(normalizedData);
           } catch (e, stackTrace) {
             AppLogger.error('PlaylistService: Error parseando Playlist desde JSON', e, stackTrace);
-            if (kDebugMode) {
-              AppLogger.debug('   - Datos normalizados que fallaron: ${normalizedData.keys.toList()}');
-              AppLogger.debug('   - playlistSongs count en datos: ${normalizedData['playlistSongs'] != null && normalizedData['playlistSongs'] is List ? (normalizedData['playlistSongs'] as List).length : 0}');
-            }
             return null;
-          }
-          
-          if (kDebugMode && playlist.songs.isEmpty && (playlist.playlistSongs?.isNotEmpty ?? false)) {
-            AppLogger.warning('PlaylistService: Playlist "${playlist.name}" tiene ${playlist.playlistSongs!.length} playlistSongs pero 0 canciones extraídas');
           }
           
           return playlist;
         } catch (e, stackTrace) {
           AppLogger.error('PlaylistService: Error parseando playlist', e, stackTrace);
-          if (kDebugMode) {
-            AppLogger.debug('   - Error type: ${e.runtimeType}');
-            AppLogger.debug('   - Error message: ${e.toString()}');
-            if (e is TypeError) {
-              AppLogger.debug('   - TypeError: ${e.toString()}');
-            }
-            if (e is FormatException) {
-              AppLogger.debug('   - FormatException: ${e.toString()}');
-            }
-          }
           return null;
         }
       } else {
@@ -183,27 +159,14 @@ class PlaylistService {
         return null;
       }
     } on DioException catch (e) {
-      AppLogger.error('PlaylistService: DioException en playlist: ${e.message}');
       if (e.response?.statusCode == 404) {
         AppLogger.warning('PlaylistService: Playlist no encontrada (404) - ID: $id');
-        AppLogger.debug('   - URL: ${e.requestOptions.uri}');
-        AppLogger.debug('   - ID recibido: "$id" (longitud: ${id.length})');
-        AppLogger.debug('   - ID es vacío: ${id.isEmpty}');
-      }
-      if (kDebugMode && e.response != null) {
-        AppLogger.debug('   - Status: ${e.response?.statusCode}');
-        AppLogger.debug('   - Data: ${e.response?.data}');
-        AppLogger.debug('   - URL: ${e.requestOptions.uri}');
-        AppLogger.debug('   - Request Options: ${e.requestOptions.uri}');
-        AppLogger.debug('   - Response Data: ${e.response?.data}');
+      } else {
+        AppLogger.error('PlaylistService: Error obteniendo playlist: ${e.message}');
       }
       return null;
     } catch (e, stackTrace) {
       AppLogger.error('PlaylistService: Error inesperado en playlist', e, stackTrace);
-      if (kDebugMode) {
-        AppLogger.debug('   - ID: $id');
-        AppLogger.debug('   - Error type: ${e.runtimeType}');
-      }
       return null;
     }
   }
@@ -215,15 +178,10 @@ class PlaylistService {
       final playlist = await getPlaylistById(playlistId);
       
       if (playlist == null) {
-        AppLogger.warning('PlaylistService: Playlist no encontrada para obtener canciones');
         return [];
       }
 
-      // Usar el getter songs del modelo Playlist que extrae las canciones de playlistSongs
-      final songs = playlist.songs;
-      AppLogger.song('PlaylistService: ${songs.length} canciones obtenidas de playlist $playlistId');
-      
-      return songs;
+      return playlist.songs;
     } catch (e) {
       AppLogger.error('PlaylistService: Error obteniendo canciones de playlist', e);
       return [];
@@ -238,19 +196,16 @@ class PlaylistService {
         return [];
       }
       
-      AppLogger.playlist('PlaylistService: Obteniendo playlists destacadas desde ${ApiConfig.baseUrl}/public/playlists/featured');
       final response = await _dio!.get(
         '${ApiConfig.baseUrl}/public/playlists/featured',
         queryParameters: {'limit': limit},
       );
-      AppLogger.network('PlaylistService: Respuesta playlists destacadas - Status: ${response.statusCode}');
 
       if (response.statusCode == 200 && response.data != null) {
         final List<dynamic> data = response.data is List ? response.data : [];
         final validData = data.where((item) => item != null && item is Map<String, dynamic>).toList();
         
         if (validData.isEmpty) {
-          AppLogger.warning('PlaylistService: No hay playlists destacadas disponibles');
           return [];
         }
         
@@ -579,73 +534,38 @@ class PlaylistService {
   /// Normalizar URL de portada: convertir ruta relativa a absoluta y localhost a 10.0.2.2
   String? _normalizeCoverUrl(String? coverUrl) {
     if (coverUrl == null || coverUrl.isEmpty) {
-      if (kDebugMode) {
-        AppLogger.warning('PlaylistService: _normalizeCoverUrl - URL es null o vacía');
-      }
       return null;
-    }
-
-    if (kDebugMode) {
-      AppLogger.debug('PlaylistService: _normalizeCoverUrl - Normalizando "$coverUrl"');
     }
 
     // Si ya es una URL completa (http:// o https://), normalizarla para el emulador
     if (coverUrl.startsWith('http://') || coverUrl.startsWith('https://')) {
-      // Reemplazar localhost con 10.0.2.2 para emulador Android
-      String normalizedUrl = coverUrl;
       if (coverUrl.contains('localhost') || coverUrl.contains('127.0.0.1')) {
-        normalizedUrl = coverUrl.replaceAll('localhost', '10.0.2.2').replaceAll('127.0.0.1', '10.0.2.2');
-        if (kDebugMode) {
-          AppLogger.debug('PlaylistService: URL con localhost convertida a 10.0.2.2: $normalizedUrl');
-        }
+        return coverUrl.replaceAll('localhost', '10.0.2.2').replaceAll('127.0.0.1', '10.0.2.2');
       }
-      if (kDebugMode) {
-        AppLogger.success('PlaylistService: URL ya es completa: $normalizedUrl');
-      }
-      return normalizedUrl;
+      return coverUrl;
     }
 
     // Extraer el dominio base de ApiConfig
     final baseUrl = ApiConfig.baseUrl;
-    // Remover /api/v1 si está presente
     String cleanBaseUrl = baseUrl.replaceAll('/api/v1', '').replaceAll(RegExp(r'/$'), '');
     
     // Asegurar que use 10.0.2.2 en lugar de localhost para emulador
     if (cleanBaseUrl.contains('localhost') || cleanBaseUrl.contains('127.0.0.1')) {
       cleanBaseUrl = cleanBaseUrl.replaceAll('localhost', '10.0.2.2').replaceAll('127.0.0.1', '10.0.2.2');
-      if (kDebugMode) {
-        AppLogger.debug('PlaylistService: Base URL convertida de localhost a 10.0.2.2: $cleanBaseUrl');
-      }
-    }
-    
-    if (kDebugMode) {
-      AppLogger.debug('PlaylistService: Base URL limpia: $cleanBaseUrl');
     }
 
     // Si es una ruta relativa que empieza con /uploads, construir URL completa
     if (coverUrl.startsWith('/uploads/')) {
-      final finalUrl = '$cleanBaseUrl$coverUrl';
-      if (kDebugMode) {
-        AppLogger.success('PlaylistService: URL normalizada (con /uploads): $finalUrl');
-      }
-      return finalUrl;
+      return '$cleanBaseUrl$coverUrl';
     }
 
     // Si es una ruta relativa sin /, agregar /uploads/covers/
     if (!coverUrl.startsWith('/')) {
-      final finalUrl = '$cleanBaseUrl/uploads/covers/$coverUrl';
-      if (kDebugMode) {
-        AppLogger.success('PlaylistService: URL normalizada (sin /): $finalUrl');
-      }
-      return finalUrl;
+      return '$cleanBaseUrl/uploads/covers/$coverUrl';
     }
 
     // Si ya tiene / al inicio pero no es /uploads, construir URL completa
-    final finalUrl = '$cleanBaseUrl$coverUrl';
-    if (kDebugMode) {
-      AppLogger.success('PlaylistService: URL normalizada (otro caso): $finalUrl');
-    }
-    return finalUrl;
+    return '$cleanBaseUrl$coverUrl';
   }
 
 }

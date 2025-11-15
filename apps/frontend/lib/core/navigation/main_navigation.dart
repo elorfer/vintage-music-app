@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/search/screens/search_screen.dart';
@@ -7,7 +8,9 @@ import '../../features/library/screens/library_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
 
 class MainNavigation extends ConsumerStatefulWidget {
-  const MainNavigation({super.key});
+  final Widget? child;
+
+  const MainNavigation({super.key, this.child});
 
   @override
   ConsumerState<MainNavigation> createState() => _MainNavigationState();
@@ -15,7 +18,6 @@ class MainNavigation extends ConsumerStatefulWidget {
 
 class _MainNavigationState extends ConsumerState<MainNavigation>
     with SingleTickerProviderStateMixin {
-  int _currentIndex = 0;
   late AnimationController _animationController;
 
   @override
@@ -33,26 +35,52 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
     super.dispose();
   }
 
+  // Obtener el índice basado en la ruta actual
+  int _getCurrentIndex(BuildContext context) {
+    final location = GoRouterState.of(context).matchedLocation;
+    if (location.startsWith('/home') && !location.contains('/playlist')) {
+      return 0;
+    } else if (location.startsWith('/search')) {
+      return 1;
+    } else if (location.startsWith('/library')) {
+      return 2;
+    } else if (location.startsWith('/profile')) {
+      return 3;
+    }
+    return 0; // Default a home
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Lista de pantallas
-    final screens = [
-      const HomeScreen(),
-      const SearchScreen(),
-      const LibraryScreen(),
-      const ProfileScreen(),
+    final currentIndex = _getCurrentIndex(context);
+
+    // Si hay un child (ruta anidada desde ShellRoute), mostrar el child en lugar del IndexedStack
+    if (widget.child != null) {
+      return Scaffold(
+        body: widget.child!,
+        bottomNavigationBar: _buildModernBottomNavigationBar(context, currentIndex),
+      );
+    }
+
+    // Lista de pantallas para el IndexedStack (cuando no hay rutas anidadas)
+    // Usando const para optimizar reconstrucciones
+    final screens = const [
+      HomeScreen(),
+      SearchScreen(),
+      LibraryScreen(),
+      ProfileScreen(),
     ];
 
     return Scaffold(
       body: IndexedStack(
-        index: _currentIndex,
+        index: currentIndex,
         children: screens,
       ),
-      bottomNavigationBar: _buildModernBottomNavigationBar(),
+      bottomNavigationBar: _buildModernBottomNavigationBar(context, currentIndex),
     );
   }
 
-  Widget _buildModernBottomNavigationBar() {
+  Widget _buildModernBottomNavigationBar(BuildContext context, int currentIndex) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -80,28 +108,40 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _buildModernNavItem(
+                context: context,
                 index: 0,
+                route: '/home',
                 icon: Icons.home_rounded,
                 activeIcon: Icons.home,
                 label: 'Inicio',
+                currentIndex: currentIndex,
               ),
               _buildModernNavItem(
+                context: context,
                 index: 1,
+                route: '/search',
                 icon: Icons.search_rounded,
                 activeIcon: Icons.search,
                 label: 'Buscar',
+                currentIndex: currentIndex,
               ),
               _buildModernNavItem(
+                context: context,
                 index: 2,
+                route: '/library',
                 icon: Icons.library_music_rounded,
                 activeIcon: Icons.library_music,
                 label: 'Biblioteca',
+                currentIndex: currentIndex,
               ),
               _buildModernNavItem(
+                context: context,
                 index: 3,
+                route: '/profile',
                 icon: Icons.person_outline_rounded,
                 activeIcon: Icons.person_rounded,
                 label: 'Perfil',
+                currentIndex: currentIndex,
               ),
             ],
           ),
@@ -111,19 +151,21 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
   }
 
   Widget _buildModernNavItem({
+    required BuildContext context,
     required int index,
+    required String route,
     required IconData icon,
     required IconData activeIcon,
     required String label,
+    required int currentIndex,
   }) {
-    final isSelected = _currentIndex == index;
+    final isSelected = currentIndex == index;
     
     return Expanded(
       child: GestureDetector(
         onTap: () {
-          setState(() {
-            _currentIndex = index;
-          });
+          // Navegar a la ruta usando GoRouter
+          context.go(route);
           _animationController.forward(from: 0.0);
         },
         behavior: HitTestBehavior.opaque,

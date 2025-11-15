@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/providers/playlist_provider.dart';
 import '../../../core/models/song_model.dart';
+import '../../../core/widgets/optimized_image.dart';
 
 class PlaylistDetailScreen extends ConsumerWidget {
   final String playlistId;
@@ -28,7 +28,9 @@ class PlaylistDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      body: playlistAsync.when(
+      body: SafeArea(
+        bottom: true, // Asegura que el contenido respete la barra de navegación del sistema
+        child: playlistAsync.when(
         data: (playlist) {
           if (playlist == null) {
             return _buildNotFoundState(context, 'La playlist que buscas no existe o fue eliminada');
@@ -37,6 +39,7 @@ class PlaylistDetailScreen extends ConsumerWidget {
           final songs = playlist.songs;
 
           return CustomScrollView(
+            cacheExtent: 500, // Precargar 500px fuera de la vista
             slivers: [
               // App Bar con imagen de fondo
               SliverAppBar(
@@ -51,15 +54,13 @@ class PlaylistDetailScreen extends ConsumerWidget {
                   background: Stack(
                     fit: StackFit.expand,
                     children: [
-                      // Imagen de portada
-                      playlist.coverArtUrl != null && playlist.coverArtUrl!.isNotEmpty
-                          ? CachedNetworkImage(
-                              imageUrl: playlist.coverArtUrl!,
-                              fit: BoxFit.cover,
-                              placeholder: (context, url) => _buildDefaultCover(),
-                              errorWidget: (context, url, error) => _buildDefaultCover(),
-                            )
-                          : _buildDefaultCover(),
+                      // Imagen de portada optimizada
+                      OptimizedImage(
+                        imageUrl: playlist.coverArtUrl,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: double.infinity,
+                      ),
                       
                       // Overlay oscuro
                       Container(
@@ -198,11 +199,11 @@ class PlaylistDetailScreen extends ConsumerWidget {
               if (songs.isEmpty)
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: EdgeInsets.only(
+                    padding: const EdgeInsets.only(
                       left: 24,
                       right: 24,
                       top: 24,
-                      bottom: 24 + MediaQuery.of(context).padding.bottom + 75 + 16, // Padding extra + SafeArea + altura barra navegación
+                      bottom: 24, // Solo padding estándar, SafeArea maneja el resto
                     ),
                     child: Center(
                       child: Column(
@@ -231,6 +232,7 @@ class PlaylistDetailScreen extends ConsumerWidget {
                     (context, index) {
                       final song = songs[index];
                       return _SongListItem(
+                        key: ValueKey(song.id), // Key estable para optimización
                         song: song,
                         index: index + 1,
                         onTap: () {
@@ -245,38 +247,15 @@ class PlaylistDetailScreen extends ConsumerWidget {
                   ),
                 ),
               
-              // Padding inferior para evitar superposición con la barra de navegación
+              // Padding inferior para evitar superposición (SafeArea ya maneja el padding del sistema)
               SliverPadding(
-                padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(context).padding.bottom + 75 + 16, // SafeArea + altura barra navegación + padding extra
-                ),
+                padding: const EdgeInsets.only(bottom: 16), // Solo padding extra, SafeArea maneja el resto
               ),
             ],
           );
         },
         loading: () => _buildLoadingState(context),
         error: (error, stack) => _buildErrorState(context, error),
-      ),
-    );
-  }
-
-  Widget _buildDefaultCover() {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFF667eea),
-            const Color(0xFF764ba2),
-          ],
-        ),
-      ),
-      child: const Center(
-        child: Icon(
-          Icons.queue_music,
-          color: Colors.white,
-          size: 64,
         ),
       ),
     );
@@ -443,6 +422,7 @@ class _SongListItem extends StatelessWidget {
   final VoidCallback onPlay;
 
   const _SongListItem({
+    super.key,
     required this.song,
     required this.index,
     required this.onTap,
@@ -487,34 +467,17 @@ class _SongListItem extends StatelessWidget {
                   ),
                 ],
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: song.coverArtUrl != null && song.coverArtUrl!.isNotEmpty
-                    ? CachedNetworkImage(
-                        imageUrl: song.coverArtUrl!,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                const Color(0xFF667eea),
-                                const Color(0xFF764ba2),
-                              ],
-                            ),
-                          ),
-                          child: const Center(
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          ),
-                        ),
-                        errorWidget: (context, url, error) => _buildDefaultSongCover(),
-                      )
-                    : _buildDefaultSongCover(),
-              ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: OptimizedImage(
+                    imageUrl: song.coverArtUrl,
+                    fit: BoxFit.cover,
+                    width: 56,
+                    height: 56,
+                    borderRadius: 8,
+                    placeholderColor: const Color(0xFF667eea).withValues(alpha: 0.3),
+                  ),
+                ),
             ),
 
             const SizedBox(width: 16),
@@ -573,28 +536,6 @@ class _SongListItem extends StatelessWidget {
               constraints: const BoxConstraints(),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDefaultSongCover() {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFF667eea),
-            const Color(0xFF764ba2),
-          ],
-        ),
-      ),
-      child: const Center(
-        child: Icon(
-          Icons.music_note,
-          color: Colors.white,
-          size: 24,
         ),
       ),
     );

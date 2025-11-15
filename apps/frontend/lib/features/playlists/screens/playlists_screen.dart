@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../../core/providers/playlist_provider.dart';
 import '../../../core/models/playlist_model.dart';
+import '../../../core/widgets/optimized_image.dart';
 
+/// PlaylistsScreen optimizado con paginación automática y mejor rendimiento
 class PlaylistsScreen extends ConsumerStatefulWidget {
   const PlaylistsScreen({super.key});
 
@@ -14,12 +16,79 @@ class PlaylistsScreen extends ConsumerStatefulWidget {
 }
 
 class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
-  int _currentPage = 1;
+  final ScrollController _scrollController = ScrollController();
   final int _pageSize = 20;
+  int _currentPage = 1;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // Paginación automática al hacer scroll
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_isLoadingMore || !_hasMore) return;
+
+    // Cargar más cuando esté cerca del final (80% del scroll)
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent * 0.8) {
+      _loadMore();
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (_isLoadingMore || !_hasMore) return;
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    try {
+      final nextPage = _currentPage + 1;
+      // Acumular playlists de todas las páginas
+      final allPlaylistsAsync = ref.read(
+        playlistsProvider((page: 1, limit: nextPage * _pageSize)),
+      );
+      
+      await allPlaylistsAsync.when(
+        data: (playlists) async {
+          if (playlists.length < nextPage * _pageSize) {
+            setState(() {
+              _hasMore = false;
+            });
+          } else {
+            setState(() {
+              _currentPage = nextPage;
+            });
+          }
+        },
+        loading: () {},
+        error: (_, __) {},
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingMore = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final playlistsAsync = ref.watch(playlistsProvider((page: _currentPage, limit: _pageSize)));
+    // Acumular todas las playlists de todas las páginas
+    final allPlaylistsAsync = ref.watch(
+      playlistsProvider((page: 1, limit: _currentPage * _pageSize)),
+    );
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -40,86 +109,77 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
         ),
         centerTitle: false,
       ),
-      body: playlistsAsync.when(
-        data: (playlists) {
-          if (playlists.isEmpty) {
-            return _buildEmptyState();
-          }
+      body: SafeArea(
+        bottom: true,
+        child: allPlaylistsAsync.when(
+          data: (playlists) {
+            if (playlists.isEmpty) {
+              return _buildEmptyState();
+            }
 
-          return RefreshIndicator(
-            onRefresh: () async {
-              // Refrescar playlists
-              ref.invalidate(playlistsProvider((page: _currentPage, limit: _pageSize)));
-            },
-            child: CustomScrollView(
-              slivers: [
-                // Grid de playlists
-                SliverPadding(
-                  padding: const EdgeInsets.all(16),
-                  sliver: SliverGrid(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                      childAspectRatio: 0.75,
-                    ),
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final playlist = playlists[index];
-                        return _PlaylistCard(
-                          playlist: playlist,
-                          onTap: () {
-                            context.push('/playlist/${playlist.id}');
-                          },
-                        );
-                      },
-                      childCount: playlists.length,
+            return RefreshIndicator(
+              onRefresh: () async {
+                setState(() {
+                  _currentPage = 1;
+                  _hasMore = true;
+                });
+                ref.invalidate(playlistsProvider((page: 1, limit: _pageSize)));
+              },
+              child: CustomScrollView(
+                controller: _scrollController,
+                slivers: [
+                  // Grid de playlists
+                  SliverPadding(
+                    padding: const EdgeInsets.all(16),
+                    sliver: SliverGrid(
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                        childAspectRatio: 0.75,
+                      ),
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          if (index >= playlists.length) {
+                            return null;
+                          }
+                          final playlist = playlists[index];
+                          return _PlaylistCard(
+                            playlist: playlist,
+                            onTap: () {
+                              context.push('/playlist/${playlist.id}');
+                            },
+                          );
+                        },
+                        childCount: playlists.length + (_isLoadingMore ? 4 : 0),
+                      ),
                     ),
                   ),
-                ),
-                
-                // Botón de cargar más
-                if (playlists.length >= _pageSize)
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    sliver: SliverToBoxAdapter(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          setState(() {
-                            _currentPage++;
-                          });
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF667eea),
-                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: Text(
-                          'Cargar más',
-                          style: GoogleFonts.inter(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
+
+                  // Loading indicator al final
+                  if (_isLoadingMore)
+                    const SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            color: Color(0xFF667eea),
                           ),
                         ),
                       ),
                     ),
+
+                  // Padding inferior
+                  const SliverPadding(
+                    padding: EdgeInsets.only(bottom: 16),
                   ),
-              
-              // Padding inferior para evitar superposición con la barra de navegación
-              SliverPadding(
-                padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(context).padding.bottom + 75 + 16, // SafeArea + altura barra navegación + padding extra
-                ),
+                ],
               ),
-              ],
-            ),
-          );
-        },
-        loading: () => _buildLoadingState(),
-        error: (error, stack) => _buildErrorState(error),
+            );
+          },
+          loading: () => _buildLoadingState(),
+          error: (error, stack) => _buildErrorState(error),
+        ),
       ),
     );
   }
@@ -175,21 +235,23 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
             ),
           ),
         ),
-        // Padding inferior para evitar superposición con la barra de navegación
-        SliverPadding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).padding.bottom + 75 + 16, // SafeArea + altura barra navegación + padding extra
-          ),
+        // Padding inferior (SafeArea ya maneja el padding del sistema)
+        const SliverPadding(
+          padding: EdgeInsets.only(bottom: 16), // Solo padding extra
         ),
       ],
     );
   }
 
   Widget _buildShimmerCard() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(12),
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[300]!,
+      highlightColor: Colors.grey[100]!,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+        ),
       ),
     );
   }
@@ -225,7 +287,11 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
           const SizedBox(height: 24),
           ElevatedButton(
             onPressed: () {
-              ref.invalidate(playlistsProvider((page: _currentPage, limit: _pageSize)));
+              setState(() {
+                _currentPage = 1;
+                _hasMore = true;
+              });
+              ref.invalidate(playlistsProvider((page: 1, limit: _pageSize)));
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF667eea),
@@ -280,31 +346,12 @@ class _PlaylistCard extends StatelessWidget {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: playlist.coverArtUrl != null && playlist.coverArtUrl!.isNotEmpty
-                    ? CachedNetworkImage(
-                        imageUrl: playlist.coverArtUrl!,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                const Color(0xFF667eea),
-                                const Color(0xFF764ba2),
-                              ],
-                            ),
-                          ),
-                          child: const Center(
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          ),
-                        ),
-                        errorWidget: (context, url, error) => _buildDefaultCover(),
-                      )
-                    : _buildDefaultCover(),
+                child: OptimizedImage(
+                  imageUrl: playlist.coverArtUrl,
+                  fit: BoxFit.cover,
+                  borderRadius: 12,
+                  placeholderColor: const Color(0xFF667eea).withValues(alpha: 0.3),
+                ),
               ),
             ),
           ),
@@ -334,28 +381,6 @@ class _PlaylistCard extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildDefaultCover() {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFF667eea),
-            const Color(0xFF764ba2),
-          ],
-        ),
-      ),
-      child: const Center(
-        child: Icon(
-          Icons.queue_music,
-          color: Colors.white,
-          size: 48,
-        ),
       ),
     );
   }

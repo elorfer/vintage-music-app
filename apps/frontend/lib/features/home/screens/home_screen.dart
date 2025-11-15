@@ -1,15 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:animate_do/animate_do.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/home_provider.dart';
 import '../widgets/featured_artists_section.dart';
 import '../widgets/featured_songs_section.dart';
 import '../widgets/featured_playlists_section.dart';
 
-class HomeScreen extends ConsumerWidget {
+/// HomeScreen optimizado con AutomaticKeepAliveClientMixin
+/// Evita reconstrucciones innecesarias al cambiar de pestañas
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true; // Mantener estado al cambiar de pestaña
 
   String _getInitials(String? firstName, String? lastName) {
     if (firstName == null && lastName == null) return 'U';
@@ -19,12 +29,15 @@ class HomeScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final authState = ref.watch(authStateProvider);
+  Widget build(BuildContext context) {
+    super.build(context); // Requerido por AutomaticKeepAliveClientMixin
+    
+    // Usar ref.read cuando solo necesitamos el valor una vez (no reconstruir)
+    final authState = ref.read(authStateProvider);
     final user = authState.user;
     
-    // Cargar datos cuando se construye la pantalla
-    ref.watch(homeStateProvider);
+    // Cargar datos solo una vez (no watch continuo)
+    ref.read(homeStateProvider);
 
     return Container(
       decoration: const BoxDecoration(
@@ -46,15 +59,13 @@ class HomeScreen extends ConsumerWidget {
           color: Colors.white,
           backgroundColor: const Color(0xFF667eea),
           child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(), // Necesario para que funcione el RefreshIndicator
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(24.0),
             child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Header con avatar y bienvenida
-              FadeInDown(
-                duration: const Duration(milliseconds: 600),
-                child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Header con avatar y bienvenida
+                Row(
                   children: [
                     // Avatar con inicial
                     Container(
@@ -119,34 +130,24 @@ class HomeScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
-              ),
 
-              const SizedBox(height: 32),
+                const SizedBox(height: 32),
 
-              // Artistas destacados
-              FadeInUp(
-                duration: const Duration(milliseconds: 1400),
-                child: FeaturedArtistsSection(),
-              ),
+                // Artistas destacados
+                FeaturedArtistsSection(key: const ValueKey('artists')),
 
-              const SizedBox(height: 32),
+                const SizedBox(height: 32),
 
-              // Canciones destacadas
-              FadeInUp(
-                duration: const Duration(milliseconds: 1600),
-                child: FeaturedSongsSection(),
-              ),
+                // Canciones destacadas
+                FeaturedSongsSection(key: const ValueKey('songs')),
 
-              const SizedBox(height: 32),
+                const SizedBox(height: 32),
 
-              // Playlists destacadas
-              FadeInUp(
-                duration: const Duration(milliseconds: 1800),
-                child: FeaturedPlaylistsSection(),
-              ),
+                // Playlists destacadas
+                FeaturedPlaylistsSection(key: const ValueKey('playlists')),
 
-              const SizedBox(height: 24),
-            ],
+                const SizedBox(height: 24),
+              ],
             ),
           ),
         ),
