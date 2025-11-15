@@ -16,24 +16,8 @@ class MainNavigation extends ConsumerStatefulWidget {
   ConsumerState<MainNavigation> createState() => _MainNavigationState();
 }
 
-class _MainNavigationState extends ConsumerState<MainNavigation>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
-
-  @override
-  void initState() {
-    super.initState();
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    );
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
+class _MainNavigationState extends ConsumerState<MainNavigation> {
+  // Sin AnimationController - animación simple con AnimatedContainer
 
   // Obtener el índice basado en la ruta actual
   int _getCurrentIndex(BuildContext context) {
@@ -102,8 +86,8 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
       child: SafeArea(
         top: false,
         child: Container(
-          height: 75,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          // Altura optimizada para evitar overflow - reducida de 75 a altura mínima necesaria
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
@@ -166,12 +150,9 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
         onTap: () {
           // Navegar a la ruta usando GoRouter
           context.go(route);
-          _animationController.forward(from: 0.0);
         },
         behavior: HitTestBehavior.opaque,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
+        child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 4),
           decoration: BoxDecoration(
             color: isSelected
@@ -180,50 +161,50 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
             borderRadius: BorderRadius.circular(16),
           ),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisSize: MainAxisSize.min, // Minimizar tamaño vertical
             mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                transitionBuilder: (child, animation) {
-                  return ScaleTransition(
-                    scale: animation,
-                    child: child,
-                  );
-                },
-                child: Container(
-                  key: ValueKey(isSelected ? 'active' : 'inactive'),
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? const Color(0xFF667eea)
-                        : Colors.transparent,
-                    shape: BoxShape.circle,
-                  ),
+              // Icono con animación simple de tamaño y color
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200), // Animación suave
+                curve: Curves.easeOut,
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? const Color(0xFF667eea)
+                      : Colors.transparent,
+                  shape: BoxShape.circle,
+                ),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200), // Animación de tamaño
+                  curve: Curves.easeOut,
                   child: Icon(
                     isSelected ? activeIcon : icon,
                     color: isSelected
                         ? Colors.white
                         : Colors.grey[600],
-                    size: 24,
+                    size: isSelected ? 24 : 22, // Cambia de tamaño cuando está seleccionado
                   ),
                 ),
               ),
-              const SizedBox(height: 4),
-              AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
-                style: GoogleFonts.inter(
-                  fontSize: isSelected ? 12 : 11,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                  color: isSelected
-                      ? const Color(0xFF667eea)
-                      : Colors.grey[600],
-                  letterSpacing: 0.2,
-                ),
+              const SizedBox(height: 3),
+              // Texto simple sin animación compleja
+              Flexible(
                 child: Text(
                   label,
                   textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    fontSize: isSelected ? 11 : 10,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                    color: isSelected
+                        ? const Color(0xFF667eea)
+                        : Colors.grey[600],
+                    letterSpacing: 0.1,
+                    height: 1.0,
+                  ),
                 ),
               ),
             ],

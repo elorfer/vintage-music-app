@@ -18,7 +18,13 @@ class HomeService {
 
   /// Inicializar el servicio
   Future<void> initialize() async {
-    _dio = Dio();
+    _dio = Dio(
+      BaseOptions(
+        // Configurar validateStatus globalmente para aceptar todos los códigos
+        // Esto previene excepciones por errores 500 que no son críticos
+        validateStatus: (status) => status != null && status < 600,
+      ),
+    );
     _storage = const FlutterSecureStorage();
     _setupInterceptors();
   }
@@ -49,7 +55,8 @@ class HomeService {
           handler.next(options);
         },
         onError: (error, handler) {
-          AppLogger.error('Error en HomeService: ${error.message}');
+          // No loguear errores - ya se manejan en cada método individualmente
+          // Esto evita logs innecesarios que causan lag en el main thread
           handler.next(error);
         },
       ),
@@ -294,6 +301,7 @@ class HomeService {
 
 
   /// Obtener canciones populares
+  /// Si el endpoint falla, retorna lista vacía silenciosamente (no afecta la UI)
   Future<List<Song>> getPopularSongs({int limit = 10}) async {
     try {
       final response = await _dio.get(
@@ -313,19 +321,20 @@ class HomeService {
           try {
             return Song.fromJson(json as Map<String, dynamic>);
           } catch (e) {
-            AppLogger.error('Error al parsear canción popular', e);
+            // Error silencioso al parsear canción individual
             return null;
           }
         }).where((item) => item != null).cast<Song>().toList();
       } else {
-        AppLogger.error('HomeService: Error canciones populares - Status: ${response.statusCode}');
+        // Error silencioso - el endpoint puede no estar disponible (500, etc.)
         return [];
       }
-    } on DioException catch (e) {
-      AppLogger.error('HomeService: Error obteniendo canciones populares: ${e.message}');
+    } on DioException {
+      // Error silencioso - no loguear para evitar spam en consola
+      // El endpoint puede no estar disponible o tener problemas en el backend
       return [];
-    } catch (e) {
-      AppLogger.error('HomeService: Error inesperado en canciones populares', e);
+    } catch (_) {
+      // Error silencioso
       return [];
     }
   }

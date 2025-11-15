@@ -1,8 +1,6 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/models/song_model.dart';
-import '../../../core/utils/logger.dart';
 import '../../../core/widgets/optimized_image.dart';
 
 class FeaturedSongCard extends StatelessWidget {
@@ -153,50 +151,23 @@ class FeaturedSongCard extends StatelessWidget {
   }
 
   String _getArtistName(Song song) {
-    if (kDebugMode) {
-      AppLogger.artist('_getArtistName para canción: ${song.title}');
-      AppLogger.debug('   - song.artist es null: ${song.artist == null}');
-      if (song.artist != null) {
-        AppLogger.debug('   - artist.id: ${song.artist!.id}');
-        AppLogger.debug('   - artist.stageName: ${song.artist!.stageName}');
-        AppLogger.debug('   - artist.displayName: ${song.artist!.displayName}');
-        AppLogger.debug('   - artist.userId: ${song.artist!.userId}');
-      }
-    }
-    
     // Intentar obtener el nombre del artista de múltiples formas
+    // Sin logs para evitar trabajo pesado en el main thread
     if (song.artist != null) {
       // Primero intentar stageName (nombre artístico)
       final stageName = song.artist!.stageName;
       if (stageName != null && stageName.isNotEmpty && stageName.trim().isNotEmpty) {
-        if (kDebugMode) {
-          AppLogger.success('Usando stageName: $stageName');
-        }
         return stageName;
       }
       
       // Si no hay stageName, usar displayName (que tiene fallback interno)
       final displayName = song.artist!.displayName;
       if (displayName.isNotEmpty && displayName != 'Artista Desconocido' && displayName.trim().isNotEmpty) {
-        if (kDebugMode) {
-          AppLogger.success('Usando displayName: $displayName');
-        }
         return displayName;
-      }
-      
-      if (kDebugMode) {
-        AppLogger.warning('No se encontró nombre válido en el artista');
-      }
-    } else {
-      if (kDebugMode) {
-        AppLogger.warning('song.artist es null');
       }
     }
     
     // Fallback final si no hay artista o no tiene nombre
-    if (kDebugMode) {
-      AppLogger.error('Retornando fallback: Artista desconocido');
-    }
     return 'Artista desconocido';
   }
 }

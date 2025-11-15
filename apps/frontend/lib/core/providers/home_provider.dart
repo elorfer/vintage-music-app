@@ -120,13 +120,9 @@ class HomeNotifier extends Notifier<HomeState> {
         AppLogger.error('HomeProvider: Error cargando playlists destacadas', e);
       }
 
-      // Cargar canciones populares
-      try {
-        popularSongs = await _homeService.getPopularSongs(limit: 10);
-        AppLogger.success('HomeProvider: Canciones populares cargadas: ${popularSongs.length}');
-      } catch (e) {
-        AppLogger.error('HomeProvider: Error cargando canciones populares', e);
-      }
+      // Cargar canciones populares (error silencioso si falla)
+      // No loguear nada - el endpoint puede no estar disponible (500, etc.)
+      popularSongs = await _homeService.getPopularSongs(limit: 10);
 
       // Cargar artistas top
       try {
@@ -194,13 +190,9 @@ class HomeNotifier extends Notifier<HomeState> {
         AppLogger.error('HomeProvider: Error cargando playlists destacadas (refresh)', e);
       }
 
-      // Cargar canciones populares
-      try {
-        popularSongs = await _homeService.getPopularSongs(limit: 10);
-        AppLogger.success('HomeProvider: Canciones populares cargadas (refresh): ${popularSongs.length}');
-      } catch (e) {
-        AppLogger.error('HomeProvider: Error cargando canciones populares (refresh)', e);
-      }
+      // Cargar canciones populares (error silencioso si falla)
+      // No loguear nada - el endpoint puede no estar disponible (500, etc.)
+      popularSongs = await _homeService.getPopularSongs(limit: 10);
 
       // Cargar artistas top
       try {

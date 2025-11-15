@@ -97,7 +97,11 @@ class PlaylistService {
         
         return validData.map((json) {
           try {
-            return Playlist.fromJson(json as Map<String, dynamic>);
+            // Normalizar datos (el backend ya devuelve camelCase, solo normalizar URLs y canciones)
+            final jsonData = json as Map<String, dynamic>;
+            final normalizedData = _normalizePlaylistData(jsonData);
+            
+            return Playlist.fromJson(normalizedData);
           } catch (e) {
             AppLogger.error('Error al parsear playlist', e);
             return null;
@@ -211,7 +215,11 @@ class PlaylistService {
         
         return validData.map((json) {
           try {
-            return Playlist.fromJson(json as Map<String, dynamic>);
+            // Normalizar datos (el backend ya devuelve camelCase, solo normalizar URLs y canciones)
+            final jsonData = json as Map<String, dynamic>;
+            final normalizedData = _normalizePlaylistData(jsonData);
+            
+            return Playlist.fromJson(normalizedData);
           } catch (e) {
             AppLogger.error('Error al parsear playlist destacada', e);
             return null;
@@ -236,9 +244,21 @@ class PlaylistService {
     final normalized = Map<String, dynamic>.from(data);
     
     // Normalizar coverArtUrl y convertir localhost a 10.0.2.2
-    final coverUrl = normalized['coverArtUrl'] ?? data['cover_art_url'];
-    if (coverUrl != null && coverUrl is String && coverUrl.isNotEmpty) {
-      normalized['coverArtUrl'] = _normalizeCoverUrl(coverUrl);
+    // Intentar obtener de múltiples fuentes (camelCase y snake_case)
+    final coverUrl = normalized['coverArtUrl'] ?? 
+                     normalized['cover_art_url'] ?? 
+                     data['coverArtUrl'] ?? 
+                     data['cover_art_url'];
+    
+    // Siempre normalizar la URL, incluso si es null o vacío
+    // Esto asegura que si hay una URL, se normalice correctamente
+    if (coverUrl != null && coverUrl is String && coverUrl.isNotEmpty && coverUrl.trim().isNotEmpty) {
+      final normalizedUrl = _normalizeCoverUrl(coverUrl);
+      normalized['coverArtUrl'] = normalizedUrl;
+      normalized['cover_art_url'] = normalizedUrl; // También mantener snake_case por compatibilidad
+    } else {
+      // Si no hay URL, asegurar que el campo existe como null
+      normalized['coverArtUrl'] = null;
     }
     
     // Normalizar playlistSongs si existen (el backend ya devuelve en camelCase)

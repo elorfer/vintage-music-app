@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/providers/home_provider.dart';
 import '../../../core/models/artist_model.dart';
+import '../../../core/widgets/fast_scroll_physics.dart';
 import 'featured_artist_card.dart';
 
 class FeaturedArtistsSection extends ConsumerWidget {
@@ -61,20 +62,26 @@ class FeaturedArtistsSection extends ConsumerWidget {
         
         const SizedBox(height: 16),
         
-        // Lista horizontal de artistas
+        // Lista horizontal de artistas optimizada
         SizedBox(
           height: 220,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 4),
+            cacheExtent: 800, // Aumentado a 800px para scroll más rápido y fluido
+            physics: const FastScrollPhysics(), // Scroll más rápido y fluido
             itemCount: featuredArtists.length,
             itemBuilder: (context, index) {
               final featuredArtist = featuredArtists[index];
-              return FeaturedArtistCard(
-                featuredArtist: featuredArtist,
-                onTap: () {
-                  _onArtistTap(context, featuredArtist.artist);
-                },
+              return RepaintBoundary(
+                key: ValueKey('artist_${featuredArtist.artist.id}'), // Key estable para optimización
+                child: FeaturedArtistCard(
+                  key: ValueKey('artist_card_${featuredArtist.artist.id}'), // Key estable
+                  featuredArtist: featuredArtist,
+                  onTap: () {
+                    _onArtistTap(context, featuredArtist.artist);
+                  },
+                ),
               );
             },
           ),
@@ -101,9 +108,13 @@ class FeaturedArtistsSection extends ConsumerWidget {
           height: 220,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
+            cacheExtent: 800, // Aumentado para scroll más rápido
+            physics: const FastScrollPhysics(), // Scroll más rápido y fluido
             itemCount: 3,
             itemBuilder: (context, index) {
-              return Container(
+              return RepaintBoundary(
+                key: ValueKey('loading_artist_$index'),
+                child: Container(
                 width: 140,
                 margin: const EdgeInsets.only(right: 16),
                 child: Column(
@@ -143,6 +154,7 @@ class FeaturedArtistsSection extends ConsumerWidget {
                     ),
                   ],
                 ),
+              ),
               );
             },
           ),

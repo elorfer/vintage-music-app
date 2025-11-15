@@ -10,14 +10,12 @@ class SearchScreen extends ConsumerStatefulWidget {
   ConsumerState<SearchScreen> createState() => _SearchScreenState();
 }
 
-class _SearchScreenState extends ConsumerState<SearchScreen>
-    with AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => true; // Mantener estado al cambiar de pestaña
+class _SearchScreenState extends ConsumerState<SearchScreen> {
+  // Eliminado AutomaticKeepAliveClientMixin: SearchScreen no necesita mantener estado
+  // Esto reduce el uso de memoria y mejora el rendimiento
 
   @override
   Widget build(BuildContext context) {
-    super.build(context); // Requerido por AutomaticKeepAliveClientMixin
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(

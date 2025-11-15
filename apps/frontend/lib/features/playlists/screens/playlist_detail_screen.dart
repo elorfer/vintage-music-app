@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/providers/playlist_provider.dart';
 import '../../../core/models/song_model.dart';
 import '../../../core/widgets/optimized_image.dart';
+import '../../../core/widgets/fast_scroll_physics.dart';
 
 class PlaylistDetailScreen extends ConsumerWidget {
   final String playlistId;
@@ -39,7 +40,8 @@ class PlaylistDetailScreen extends ConsumerWidget {
           final songs = playlist.songs;
 
           return CustomScrollView(
-            cacheExtent: 500, // Precargar 500px fuera de la vista
+            cacheExtent: 800, // Aumentado a 800px para scroll más rápido
+            physics: const FastScrollPhysics(), // Scroll más rápido y fluido
             slivers: [
               // App Bar con imagen de fondo
               SliverAppBar(
@@ -54,12 +56,13 @@ class PlaylistDetailScreen extends ConsumerWidget {
                   background: Stack(
                     fit: StackFit.expand,
                     children: [
-                      // Imagen de portada optimizada
+                      // Imagen de portada optimizada (portada grande)
                       OptimizedImage(
                         imageUrl: playlist.coverArtUrl,
                         fit: BoxFit.cover,
                         width: double.infinity,
                         height: double.infinity,
+                        isLargeCover: true, // Marcar como portada grande para optimización
                       ),
                       
                       // Overlay oscuro
@@ -231,19 +234,25 @@ class PlaylistDetailScreen extends ConsumerWidget {
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
                       final song = songs[index];
-                      return _SongListItem(
-                        key: ValueKey(song.id), // Key estable para optimización
-                        song: song,
-                        index: index + 1,
-                        onTap: () {
-                          _onSongTap(context, song);
-                        },
-                        onPlay: () {
-                          _onPlaySong(context, song);
-                        },
+                      return RepaintBoundary(
+                        key: ValueKey('song_item_${song.id}'), // Key estable para optimización
+                        child: _SongListItem(
+                          key: ValueKey(song.id), // Key estable para el widget
+                          song: song,
+                          index: index + 1,
+                          onTap: () {
+                            _onSongTap(context, song);
+                          },
+                          onPlay: () {
+                            _onPlaySong(context, song);
+                          },
+                        ),
                       );
                     },
                     childCount: songs.length,
+                    // Optimización: desactivar keepAlive y repaintBoundaries automáticos para mejor rendimiento
+                    addAutomaticKeepAlives: false, // No mantener vivos items fuera de la vista (mejor rendimiento)
+                    addRepaintBoundaries: false, // Ya tenemos RepaintBoundary manual
                   ),
                 ),
               

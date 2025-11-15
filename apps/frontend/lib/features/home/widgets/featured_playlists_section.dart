@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/providers/home_provider.dart';
 import '../../../core/models/playlist_model.dart';
+import '../../../core/widgets/fast_scroll_physics.dart';
 import 'featured_playlist_card.dart';
 
 class FeaturedPlaylistsSection extends ConsumerWidget {
@@ -63,20 +64,26 @@ class FeaturedPlaylistsSection extends ConsumerWidget {
         
         const SizedBox(height: 16),
         
-        // Lista horizontal de playlists
+        // Lista horizontal de playlists optimizada
         SizedBox(
           height: 240,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 4),
+            cacheExtent: 800, // Aumentado a 800px para scroll más rápido y fluido
+            physics: const FastScrollPhysics(), // Scroll más rápido y fluido
             itemCount: featuredPlaylists.length,
             itemBuilder: (context, index) {
               final featuredPlaylist = featuredPlaylists[index];
-              return FeaturedPlaylistCard(
-                featuredPlaylist: featuredPlaylist,
-                onTap: () {
-                  _onPlaylistTap(context, featuredPlaylist.playlist);
-                },
+              return RepaintBoundary(
+                key: ValueKey('playlist_${featuredPlaylist.playlist.id}'), // Key estable para optimización
+                child: FeaturedPlaylistCard(
+                  key: ValueKey('playlist_card_${featuredPlaylist.playlist.id}'), // Key estable
+                  featuredPlaylist: featuredPlaylist,
+                  onTap: () {
+                    _onPlaylistTap(context, featuredPlaylist.playlist);
+                  },
+                ),
               );
             },
           ),
@@ -103,9 +110,13 @@ class FeaturedPlaylistsSection extends ConsumerWidget {
           height: 240,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
+            cacheExtent: 800, // Aumentado para scroll más rápido
+            physics: const FastScrollPhysics(), // Scroll más rápido y fluido
             itemCount: 3,
             itemBuilder: (context, index) {
-              return Container(
+              return RepaintBoundary(
+                key: ValueKey('loading_playlist_$index'),
+                child: Container(
                 width: 160,
                 margin: const EdgeInsets.only(right: 16),
                 child: Column(
@@ -145,6 +156,7 @@ class FeaturedPlaylistsSection extends ConsumerWidget {
                     ),
                   ],
                 ),
+              ),
               );
             },
           ),

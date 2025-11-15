@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/home_provider.dart';
+import '../../../core/widgets/fast_scroll_physics.dart';
 import '../widgets/featured_artists_section.dart';
 import '../widgets/featured_songs_section.dart';
 import '../widgets/featured_playlists_section.dart';
@@ -59,7 +60,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           color: Colors.white,
           backgroundColor: const Color(0xFF667eea),
           child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
+            physics: const FastScrollPhysics(), // Scroll más rápido y fluido
             padding: const EdgeInsets.all(24.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,

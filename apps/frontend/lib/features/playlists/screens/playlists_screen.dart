@@ -6,6 +6,7 @@ import 'package:shimmer/shimmer.dart';
 import '../../../core/providers/playlist_provider.dart';
 import '../../../core/models/playlist_model.dart';
 import '../../../core/widgets/optimized_image.dart';
+import '../../../core/widgets/fast_scroll_physics.dart';
 
 /// PlaylistsScreen optimizado con paginación automática y mejor rendimiento
 class PlaylistsScreen extends ConsumerStatefulWidget {
@@ -117,17 +118,19 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
               return _buildEmptyState();
             }
 
-            return RefreshIndicator(
-              onRefresh: () async {
-                setState(() {
-                  _currentPage = 1;
-                  _hasMore = true;
-                });
-                ref.invalidate(playlistsProvider((page: 1, limit: _pageSize)));
-              },
-              child: CustomScrollView(
-                controller: _scrollController,
-                slivers: [
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    setState(() {
+                      _currentPage = 1;
+                      _hasMore = true;
+                    });
+                    ref.invalidate(playlistsProvider((page: 1, limit: _pageSize)));
+                  },
+                  child: CustomScrollView(
+                    controller: _scrollController,
+                    cacheExtent: 800, // Aumentado a 800px para scroll más rápido
+                    physics: const FastScrollPhysics(), // Scroll más rápido y fluido
+                    slivers: [
                   // Grid de playlists
                   SliverPadding(
                     padding: const EdgeInsets.all(16),
@@ -141,17 +144,27 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
                       delegate: SliverChildBuilderDelegate(
                         (context, index) {
                           if (index >= playlists.length) {
-                            return null;
+                            return _isLoadingMore
+                                ? RepaintBoundary(
+                                    child: _buildShimmerCard(),
+                                  )
+                                : null;
                           }
                           final playlist = playlists[index];
-                          return _PlaylistCard(
-                            playlist: playlist,
-                            onTap: () {
-                              context.push('/playlist/${playlist.id}');
-                            },
+                          return RepaintBoundary(
+                            child: _PlaylistCard(
+                              key: ValueKey('playlist_${playlist.id}'), // Key estable para optimización
+                              playlist: playlist,
+                              onTap: () {
+                                context.push('/playlist/${playlist.id}');
+                              },
+                            ),
                           );
                         },
                         childCount: playlists.length + (_isLoadingMore ? 4 : 0),
+                        // Optimización: desactivar keepAlive y repaintBoundaries automáticos para mejor rendimiento
+                        addAutomaticKeepAlives: false, // No mantener vivos items fuera de la vista (mejor rendimiento)
+                        addRepaintBoundaries: false, // Ya tenemos RepaintBoundary manual
                       ),
                     ),
                   ),
@@ -219,6 +232,8 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
 
   Widget _buildLoadingState() {
     return CustomScrollView(
+      cacheExtent: 800, // Aumentado para scroll más rápido
+      physics: const FastScrollPhysics(), // Scroll más rápido y fluido
       slivers: [
         SliverPadding(
           padding: const EdgeInsets.all(16),
@@ -230,8 +245,12 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
               childAspectRatio: 0.75,
             ),
             delegate: SliverChildBuilderDelegate(
-              (context, index) => _buildShimmerCard(),
+              (context, index) => RepaintBoundary(
+                child: _buildShimmerCard(),
+              ),
               childCount: 6,
+              addAutomaticKeepAlives: false,
+              addRepaintBoundaries: false,
             ),
           ),
         ),
@@ -320,6 +339,7 @@ class _PlaylistCard extends StatelessWidget {
   final VoidCallback onTap;
 
   const _PlaylistCard({
+    super.key,
     required this.playlist,
     required this.onTap,
   });

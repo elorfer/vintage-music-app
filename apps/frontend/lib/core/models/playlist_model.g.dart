@@ -51,7 +51,7 @@ Playlist _$PlaylistFromJson(Map<String, dynamic> json) => Playlist(
       isFeatured: json['isFeatured'] as bool?,
       totalTracks: (json['totalTracks'] as num?)?.toInt(),
       totalFollowers: (json['totalFollowers'] as num?)?.toInt(),
-      totalDuration: (json['totalDuration'] as num?)?.toInt(),
+      totalDuration: _safeIntFromJson(json['totalDuration']),
       createdAt: json['createdAt'] == null
           ? null
           : DateTime.parse(json['createdAt'] as String),

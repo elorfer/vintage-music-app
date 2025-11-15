@@ -24,6 +24,21 @@ enum PlaylistVisibility {
   unlisted,
 }
 
+/// Convertir número a int de forma segura, validando Infinity y NaN
+int? _safeIntFromJson(dynamic value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  if (value is num) {
+    final doubleValue = value.toDouble();
+    // Validar que no sea infinito o NaN antes de convertir a int
+    if (!doubleValue.isFinite || doubleValue.isNaN) {
+      return null;
+    }
+    return doubleValue.toInt();
+  }
+  return null;
+}
+
 @JsonSerializable(
   explicitToJson: true,
   includeIfNull: false,
@@ -65,6 +80,7 @@ class Playlist {
   final bool? isFeatured;
   final int? totalTracks;
   final int? totalFollowers;
+  @JsonKey(fromJson: _safeIntFromJson)
   final int? totalDuration;
   final DateTime? createdAt;
   final DateTime? updatedAt;

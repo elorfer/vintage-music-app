@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/widgets/fast_scroll_physics.dart';
 
 /// LibraryScreen optimizado con AutomaticKeepAliveClientMixin
 class LibraryScreen extends ConsumerStatefulWidget {
@@ -15,6 +16,46 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true; // Mantener estado al cambiar de pestaña
+
+  // Lista de secciones estáticas para optimización
+  static final List<Map<String, dynamic>> _librarySections = [
+    {
+      'icon': Icons.favorite,
+      'title': 'Canciones Favoritas',
+      'subtitle': '0 canciones',
+      'onTap': () {},
+    },
+    {
+      'icon': Icons.playlist_play,
+      'title': 'Mis Playlists',
+      'subtitle': '0 playlists',
+      'onTap': null, // Se maneja en el build
+    },
+    {
+      'icon': Icons.download,
+      'title': 'Descargadas',
+      'subtitle': '0 canciones',
+      'onTap': () {},
+    },
+    {
+      'icon': Icons.history,
+      'title': 'Recientemente Reproducidas',
+      'subtitle': '0 canciones',
+      'onTap': () {},
+    },
+    {
+      'icon': Icons.album,
+      'title': 'Álbumes Guardados',
+      'subtitle': '0 álbumes',
+      'onTap': () {},
+    },
+    {
+      'icon': Icons.person,
+      'title': 'Artistas Seguidos',
+      'subtitle': '0 artistas',
+      'onTap': () {},
+    },
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -52,49 +93,30 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 ),
                 const SizedBox(height: 24),
                 
-                // Library sections
+                // Library sections optimizadas
                 Expanded(
-                  child: ListView(
-                    children: [
-                      _buildLibrarySection(
-                        icon: Icons.favorite,
-                        title: 'Canciones Favoritas',
-                        subtitle: '0 canciones',
-                        onTap: () {},
-                      ),
-                      _buildLibrarySection(
-                        icon: Icons.playlist_play,
-                        title: 'Mis Playlists',
-                        subtitle: '0 playlists',
-                        onTap: () {
-                          context.push('/playlists');
-                        },
-                      ),
-                      _buildLibrarySection(
-                        icon: Icons.download,
-                        title: 'Descargadas',
-                        subtitle: '0 canciones',
-                        onTap: () {},
-                      ),
-                      _buildLibrarySection(
-                        icon: Icons.history,
-                        title: 'Recientemente Reproducidas',
-                        subtitle: '0 canciones',
-                        onTap: () {},
-                      ),
-                      _buildLibrarySection(
-                        icon: Icons.album,
-                        title: 'Álbumes Guardados',
-                        subtitle: '0 álbumes',
-                        onTap: () {},
-                      ),
-                      _buildLibrarySection(
-                        icon: Icons.person,
-                        title: 'Artistas Seguidos',
-                        subtitle: '0 artistas',
-                        onTap: () {},
-                      ),
-                    ],
+                  child: ListView.builder(
+                    cacheExtent: 800, // Aumentado a 800px para scroll más rápido
+                    physics: const FastScrollPhysics(), // Scroll más rápido y fluido
+                    itemCount: _librarySections.length,
+                    itemExtent: 80.0, // Altura fija para mejor rendimiento
+                    itemBuilder: (context, index) {
+                      final section = _librarySections[index];
+                      return RepaintBoundary(
+                        key: ValueKey('library_section_$index'),
+                        child: _buildLibrarySection(
+                          icon: section['icon'] as IconData,
+                          title: section['title'] as String,
+                          subtitle: section['subtitle'] as String,
+                          onTap: section['onTap'] as VoidCallback? ?? () {
+                            // Manejar tap específico para "Mis Playlists"
+                            if (index == 1) {
+                              context.push('/playlists');
+                            }
+                          },
+                        ),
+                      );
+                    },
                   ),
                 ),
               ],

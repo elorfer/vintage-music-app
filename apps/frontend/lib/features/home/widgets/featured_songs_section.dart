@@ -61,14 +61,13 @@ class FeaturedSongsSection extends ConsumerWidget {
         
         const SizedBox(height: 16),
         
-        // Lista vertical de canciones (máximo 4)
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: featuredSongs.length > 4 ? 4 : featuredSongs.length,
-          itemBuilder: (context, index) {
-            final featuredSong = featuredSongs[index];
-            return FeaturedSongCard(
+        // Lista vertical de canciones optimizada (máximo 4)
+        // Usar Column con Expanded para evitar shrinkWrap (mejor rendimiento)
+        ...featuredSongs.take(4).map((featuredSong) {
+          return RepaintBoundary(
+            key: ValueKey('song_${featuredSong.song.id}'), // Key estable para optimización
+            child: FeaturedSongCard(
+              key: ValueKey('song_card_${featuredSong.song.id}'), // Key estable
               featuredSong: featuredSong,
               onTap: () {
                 _onSongTap(context, featuredSong.song);
@@ -76,9 +75,9 @@ class FeaturedSongsSection extends ConsumerWidget {
               onPlay: () {
                 _onPlaySong(context, featuredSong.song);
               },
-            );
-          },
-        ),
+            ),
+          );
+        }).toList(),
         
         // Botón para ver más canciones
         if (featuredSongs.length > 4) ...[
@@ -117,12 +116,12 @@ class FeaturedSongsSection extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 16),
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: 3,
-          itemBuilder: (context, index) {
-            return Container(
+        // Usar Column en lugar de ListView.builder con shrinkWrap (mejor rendimiento)
+        Column(
+          children: List.generate(3, (index) {
+            return RepaintBoundary(
+              key: ValueKey('loading_song_$index'),
+              child: Container(
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -180,8 +179,9 @@ class FeaturedSongsSection extends ConsumerWidget {
                   ),
                 ],
               ),
+            ),
             );
-          },
+          }),
         ),
       ],
     );
