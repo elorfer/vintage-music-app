@@ -128,3 +128,5 @@ npm run dev
 
 **Próximo paso:** Espera a que Docker Desktop termine de iniciar y luego ejecuta `docker-compose up -d postgres redis`
 
+
+

@@ -10,6 +10,8 @@ Artist _$ArtistFromJson(Map<String, dynamic> json) => Artist(
       id: json['id'] as String,
       userId: json['user_id'] as String?,
       stageName: json['stage_name'] as String?,
+      profilePhotoUrl: json['profile_photo_url'] as String?,
+      coverPhotoUrl: json['cover_photo_url'] as String?,
       bio: json['bio'] as String?,
       websiteUrl: json['website_url'] as String?,
       socialLinks: json['social_links'] as Map<String, dynamic>?,
@@ -38,6 +40,8 @@ Map<String, dynamic> _$ArtistToJson(Artist instance) {
 
   writeNotNull('user_id', instance.userId);
   writeNotNull('stage_name', instance.stageName);
+  writeNotNull('profile_photo_url', instance.profilePhotoUrl);
+  writeNotNull('cover_photo_url', instance.coverPhotoUrl);
   writeNotNull('bio', instance.bio);
   writeNotNull('website_url', instance.websiteUrl);
   writeNotNull('social_links', instance.socialLinks);
@@ -55,6 +59,7 @@ FeaturedArtist _$FeaturedArtistFromJson(Map<String, dynamic> json) =>
       artist: Artist.fromJson(json['artist'] as Map<String, dynamic>),
       featuredReason: json['featured_reason'] as String?,
       rank: (json['rank'] as num).toInt(),
+      imageUrl: json['image_url'] as String?,
     );
 
 Map<String, dynamic> _$FeaturedArtistToJson(FeaturedArtist instance) {
@@ -70,5 +75,6 @@ Map<String, dynamic> _$FeaturedArtistToJson(FeaturedArtist instance) {
 
   writeNotNull('featured_reason', instance.featuredReason);
   val['rank'] = instance.rank;
+  writeNotNull('image_url', instance.imageUrl);
   return val;
 }

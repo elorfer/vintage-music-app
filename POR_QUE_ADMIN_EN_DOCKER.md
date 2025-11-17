@@ -120,3 +120,5 @@ El `docker-compose.yml` tiene configuraciones **desactualizadas**:
 
 **Conclusión:** Es normal que aparezca en Docker Desktop, pero puedes ignorarlo. Solo inicia `postgres` y `redis` en Docker, y corre Admin Panel y Backend localmente.
 
+
+

@@ -26,7 +26,11 @@ export class CoversStorageService {
     // Directorio base de uploads
     this.uploadsDir = path.join(process.cwd(), 'uploads');
     this.coversDir = path.join(this.uploadsDir, 'covers');
-    this.baseUrl = this.configService.get<string>('APP_URL') || 'http://localhost:3000';
+    // Usar APP_URL o construir desde PORT y HOST, con fallback al puerto correcto (3001)
+    const port = this.configService.get<number>('PORT') || 3001;
+    const host = this.configService.get<string>('HOST') || 'localhost';
+    const appUrl = this.configService.get<string>('APP_URL');
+    this.baseUrl = appUrl || `http://${host === '0.0.0.0' ? 'localhost' : host}:${port}`;
 
     // Crear directorios si no existen
     this.ensureDirectoriesExist();

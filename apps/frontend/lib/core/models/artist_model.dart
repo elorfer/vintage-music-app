@@ -11,6 +11,8 @@ class Artist {
   final String id;
   final String? userId;
   final String? stageName;
+  final String? profilePhotoUrl;
+  final String? coverPhotoUrl;
   final String? bio;
   final String? websiteUrl;
   final Map<String, dynamic>? socialLinks;
@@ -25,6 +27,8 @@ class Artist {
     required this.id,
     this.userId,
     this.stageName,
+    this.profilePhotoUrl,
+    this.coverPhotoUrl,
     this.bio,
     this.websiteUrl,
     this.socialLinks,
@@ -54,11 +58,13 @@ class FeaturedArtist {
   final Artist artist;
   final String? featuredReason;
   final int rank;
+  final String? imageUrl;
 
   const FeaturedArtist({
     required this.artist,
     this.featuredReason,
     required this.rank,
+    this.imageUrl,
   });
 
   factory FeaturedArtist.fromJson(Map<String, dynamic> json) => _$FeaturedArtistFromJson(json);

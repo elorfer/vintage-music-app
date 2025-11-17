@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/models/song_model.dart';
 import '../../../core/widgets/optimized_image.dart';
+import '../../../core/utils/number_formatter.dart';
 
 class FeaturedSongCard extends StatelessWidget {
   final FeaturedSong featuredSong;
@@ -104,7 +105,7 @@ class FeaturedSongCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        '${_formatNumber(song.totalStreams)} • ${song.durationFormatted}',
+                        '${NumberFormatter.format(song.totalStreams)} • ${song.durationFormatted}',
                         style: GoogleFonts.inter(
                           fontSize: 11,
                           color: Colors.white.withValues(alpha: 0.6),
@@ -140,15 +141,6 @@ class FeaturedSongCard extends StatelessWidget {
     );
   }
 
-  String _formatNumber(int number) {
-    if (number >= 1000000) {
-      return '${(number / 1000000).toStringAsFixed(1)}M';
-    } else if (number >= 1000) {
-      return '${(number / 1000).toStringAsFixed(1)}K';
-    } else {
-      return number.toString();
-    }
-  }
 
   String _getArtistName(Song song) {
     // Intentar obtener el nombre del artista de múltiples formas

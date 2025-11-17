@@ -10,6 +10,7 @@ import {
   Query,
   ParseIntPipe,
   BadRequestException,
+  GoneException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 
@@ -83,20 +84,17 @@ export class FeaturedController {
     return this.featuredService.setSongFeatured(id, false);
   }
 
+  // Deshabilitado: gestión de destacados de artistas se hace desde módulo Artists
   @Post('artists/:id/feature')
-  @ApiOperation({ summary: 'Destacar un artista' })
-  @ApiResponse({ status: 200, description: 'Artista destacado exitosamente' })
-  @ApiResponse({ status: 404, description: 'Artista no encontrado' })
+  @ApiOperation({ summary: 'Deshabilitado: gestionar destacado desde /artists' })
   async featureArtist(@Param('id') id: string) {
-    return this.featuredService.setArtistFeatured(id, true);
+    throw new GoneException('Este endpoint está deshabilitado. Usa /artists/:id/feature (toggle) en el módulo Artists.');
   }
 
   @Delete('artists/:id/feature')
-  @ApiOperation({ summary: 'Quitar destacado de un artista' })
-  @ApiResponse({ status: 200, description: 'Artista ya no está destacado' })
-  @ApiResponse({ status: 404, description: 'Artista no encontrado' })
+  @ApiOperation({ summary: 'Deshabilitado: gestionar destacado desde /artists' })
   async unfeatureArtist(@Param('id') id: string) {
-    return this.featuredService.setArtistFeatured(id, false);
+    throw new GoneException('Este endpoint está deshabilitado. Usa /artists/:id/feature (toggle) en el módulo Artists.');
   }
 
   @Post('playlists/:id/feature')

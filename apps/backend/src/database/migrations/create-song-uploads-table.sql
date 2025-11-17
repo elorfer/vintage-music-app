@@ -38,3 +38,5 @@ COMMENT ON COLUMN song_uploads.cover_file_key IS 'Clave del archivo de portada e
 COMMENT ON COLUMN song_uploads.job_id IS 'ID del job de BullMQ';
 COMMENT ON COLUMN song_uploads.compensation_applied IS 'Indica si se aplicó limpieza de archivos (SAGA pattern)';
 
+
+

@@ -2,13 +2,18 @@ import {
   Controller,
   Get,
   Patch,
+  Post,
+  Put,
   Param,
   Body,
   UseGuards,
   Query,
   ParseIntPipe,
+  UseInterceptors,
+  UploadedFiles,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiConsumes, ApiParam, ApiBody } from '@nestjs/swagger';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 
 import { ArtistsService } from './artists.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -34,6 +39,16 @@ export class ArtistsController {
     @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 10,
   ) {
     return this.artistsService.findAll(page, limit);
+  }
+
+  @Get('featured')
+  @ApiOperation({ summary: 'Obtener artistas destacados' })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiResponse({ status: 200, description: 'Lista de artistas destacados' })
+  async getFeatured(
+    @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 20,
+  ) {
+    return this.artistsService.findFeatured(limit);
   }
 
   @Get('top')
@@ -91,6 +106,127 @@ export class ArtistsController {
   @ApiResponse({ status: 404, description: 'Artista no encontrado' })
   async getArtistStats(@Param('id') id: string) {
     return this.artistsService.getArtistStats(id);
+  }
+
+  @Post()
+  @Roles(UserRole.ADMIN)
+  @UseGuards(RolesGuard)
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'profile', maxCount: 1 },
+        { name: 'cover', maxCount: 1 },
+      ],
+      {
+        limits: {
+          fileSize: 10 * 1024 * 1024, // 10MB por imagen
+        },
+        fileFilter: (req, file, cb) => {
+          const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+          if (allowed.includes(file.mimetype)) {
+            cb(null, true);
+          } else {
+            cb(new Error('Tipo de archivo de imagen no permitido'), false);
+          }
+        },
+      },
+    ),
+  )
+  @ApiOperation({ summary: 'Crear artista (multipart/form-data)' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        nationalityCode: { type: 'string', minLength: 2, maxLength: 2 },
+        biography: { type: 'string' },
+        featured: { type: 'boolean' },
+        userId: { type: 'string' },
+        profile: { type: 'string', format: 'binary' },
+        cover: { type: 'string', format: 'binary' },
+      },
+      required: ['name'],
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Artista creado' })
+  async createArtist(
+    @UploadedFiles() files: { profile?: Express.Multer.File[]; cover?: Express.Multer.File[] },
+    @Body() body: any,
+  ) {
+    const profileFile = files?.profile?.[0];
+    const coverFile = files?.cover?.[0];
+    return this.artistsService.createArtist({
+      name: body?.name,
+      nationalityCode: body?.nationalityCode,
+      biography: body?.biography,
+      featured: body?.featured === 'true' || body?.featured === true,
+      userId: body?.userId,
+      profileFile,
+      coverFile,
+    });
+  }
+
+  @Put(':id')
+  @Roles(UserRole.ADMIN)
+  @UseGuards(RolesGuard)
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'profile', maxCount: 1 },
+        { name: 'cover', maxCount: 1 },
+      ],
+      {
+        limits: {
+          fileSize: 10 * 1024 * 1024,
+        },
+        fileFilter: (req, file, cb) => {
+          const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+          if (allowed.includes(file.mimetype)) {
+            cb(null, true);
+          } else {
+            cb(new Error('Tipo de archivo de imagen no permitido'), false);
+          }
+        },
+      },
+    ),
+  )
+  @ApiOperation({ summary: 'Actualizar artista' })
+  @ApiConsumes('multipart/form-data')
+  @ApiResponse({ status: 200, description: 'Artista actualizado' })
+  async updateArtist(
+    @Param('id') id: string,
+    @UploadedFiles() files: { profile?: Express.Multer.File[]; cover?: Express.Multer.File[] },
+    @Body() body: any,
+  ) {
+    const profileFile = files?.profile?.[0];
+    const coverFile = files?.cover?.[0];
+    return this.artistsService.updateArtist(id, {
+      name: body?.name,
+      nationalityCode: body?.nationalityCode,
+      biography: body?.biography,
+      featured: body?.featured === 'true' || body?.featured === true,
+      profileFile,
+      coverFile,
+    });
+  }
+
+  @Put(':id/feature')
+  @Roles(UserRole.ADMIN)
+  @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Marcar/desmarcar artista como destacado' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { featured: { type: 'boolean' } },
+      required: ['featured'],
+    },
+  })
+  async featureArtist(
+    @Param('id') id: string,
+    @Body('featured') featured: boolean,
+  ) {
+    return this.artistsService.toggleFeatured(id, !!featured);
   }
 
   @Patch('profile')

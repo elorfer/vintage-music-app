@@ -6,6 +6,8 @@ import '../models/artist_model.dart';
 import '../models/song_model.dart';
 import '../models/playlist_model.dart';
 import 'http_cache_service.dart';
+import '../utils/logger.dart';
+import '../utils/url_normalizer.dart';
 
 class HomeService {
   static final HomeService _instance = HomeService._internal();
@@ -17,15 +19,44 @@ class HomeService {
 
   /// Inicializar el servicio
   Future<void> initialize() async {
+    AppLogger.info('[HomeService] Inicializando HomeService...');
+    AppLogger.config('[HomeService] URL base configurada: ${ApiConfig.baseUrl}');
+    
     _dio = Dio(
       BaseOptions(
+        baseUrl: ApiConfig.baseUrl,
         // Configurar validateStatus globalmente para aceptar todos los códigos
         // Esto previene excepciones por errores 500 que no son críticos
         validateStatus: (status) => status != null && status < 600,
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
+        sendTimeout: const Duration(seconds: 30),
       ),
     );
     _storage = const FlutterSecureStorage();
     _setupInterceptors();
+    AppLogger.success('[HomeService] HomeService inicializado correctamente');
+    
+    // Test de conexión básico (no bloqueante)
+    Future.microtask(() async {
+      try {
+        AppLogger.debug('[HomeService] Probando conexión al backend...');
+        final testResponse = await _dio.get('/health', 
+          options: Options(
+            receiveTimeout: const Duration(seconds: 5),
+            sendTimeout: const Duration(seconds: 5),
+          ),
+        );
+        AppLogger.success('[HomeService] Conexión exitosa! Status: ${testResponse.statusCode}');
+      } catch (e) {
+        AppLogger.warning('[HomeService] No se pudo conectar al backend: $e');
+        AppLogger.warning('[HomeService] Verifica que el backend esté corriendo en: ${ApiConfig.baseUrl.replaceAll('/api/v1', '')}');
+        if (e is DioException) {
+          AppLogger.warning('[HomeService] Error de conexión: ${e.type} - ${e.message}');
+          AppLogger.warning('[HomeService] URL intentada: ${e.requestOptions.uri}');
+        }
+      }
+    });
   }
 
   /// Configurar interceptores
@@ -65,48 +96,243 @@ class HomeService {
   }
 
   /// Obtener artistas destacados
+  /// - Normaliza claves camelCase/snake_case
+  /// - Aplica cache-busting y fuerza refresh del caché HTTP
+  /// - Tolera respuestas en arreglo plano o con wrapper { artists: [] }
   Future<List<FeaturedArtist>> getFeaturedArtists({int limit = 6}) async {
     try {
+      final url = '/public/featured/artists';
+      AppLogger.debug('[HomeService] Obteniendo artistas destacados desde: ${ApiConfig.baseUrl}$url');
+      
       final response = await _dio.get(
-        '${ApiConfig.baseUrl}/public/featured/artists',
-        queryParameters: {'limit': limit},
+        url,
+        queryParameters: {
+          'limit': limit,
+          '_t': DateTime.now().millisecondsSinceEpoch,
+        },
+        options: Options(
+          receiveTimeout: const Duration(seconds: 10),
+          sendTimeout: const Duration(seconds: 10),
+          extra: {
+            'dio_cache_force_refresh': true,
+          },
+        ),
       );
+      
+      AppLogger.success('[HomeService] Respuesta recibida: ${response.statusCode}');
+      AppLogger.data('[HomeService] Datos recibidos: ${response.data}');
 
       if (response.statusCode == 200 && response.data != null) {
-        final List<dynamic> data = response.data is List ? response.data : (response.data['artists'] ?? []);
-        final validData = data.where((item) => item != null && item is Map<String, dynamic>).toList();
-        
-        if (validData.isEmpty) {
-          return [];
+        final List<dynamic> data = response.data is List
+            ? (response.data as List)
+            : ((response.data['artists'] as List?) ?? const []);
+
+        AppLogger.data('[HomeService] Total de artistas recibidos: ${data.length}');
+
+        if (data.isEmpty) {
+          AppLogger.warning('[HomeService] No hay artistas destacados en la respuesta');
+          return const [];
         }
-        
-        return validData.asMap().entries.map((entry) {
-          try {
-            final artist = Artist.fromJson(entry.value as Map<String, dynamic>);
-            return FeaturedArtist(
-              artist: artist,
-              featuredReason: 'Destacado',
-              rank: entry.key + 1,
-            );
-          } catch (e) {
-            return null;
+
+        final result = <FeaturedArtist>[];
+        for (var i = 0; i < data.length; i++) {
+          final item = data[i];
+          if (item is! Map<String, dynamic>) {
+            AppLogger.warning('[HomeService] Item $i no es un Map: ${item.runtimeType}');
+            continue;
           }
-        }).where((item) => item != null).cast<FeaturedArtist>().toList();
+
+          AppLogger.artist('[HomeService] Procesando artista $i: ${item['name'] ?? item['stageName'] ?? item['stage_name'] ?? 'Sin nombre'}');
+          
+          final normalized = _normalizeArtistMap(item);
+          AppLogger.data('[HomeService] Datos normalizados: ${normalized.keys.toList()}');
+
+          // Imagen preferida - buscar en múltiples lugares
+          final rawImage = (item['profilePhotoUrl'] as String?) ??
+              (item['profile_photo_url'] as String?) ??
+              (item['coverPhotoUrl'] as String?) ??
+              (item['cover_photo_url'] as String?) ??
+              (normalized['profile_photo_url'] as String?) ??
+              (normalized['cover_photo_url'] as String?);
+
+          AppLogger.media('[HomeService] Imagen raw encontrada: $rawImage');
+          AppLogger.data('[HomeService] Item keys: ${item.keys.toList()}');
+          
+          final normalizedImage = UrlNormalizer.normalizeImageUrl(rawImage, enableLogging: true);
+          AppLogger.media('[HomeService] Imagen normalizada: $normalizedImage');
+
+          try {
+            final artist = Artist.fromJson(normalized);
+            AppLogger.success('[HomeService] Artista parseado correctamente: ${artist.stageName ?? artist.id}');
+            AppLogger.media('[HomeService] profilePhotoUrl del artista: ${artist.profilePhotoUrl}');
+            AppLogger.media('[HomeService] coverPhotoUrl del artista: ${artist.coverPhotoUrl}');
+            
+            // Usar la imagen normalizada o la del artista parseado
+            final finalImageUrl = normalizedImage ?? 
+                (artist.profilePhotoUrl != null ? UrlNormalizer.normalizeImageUrl(artist.profilePhotoUrl) : null) ??
+                (artist.coverPhotoUrl != null ? UrlNormalizer.normalizeImageUrl(artist.coverPhotoUrl) : null);
+            
+            AppLogger.media('[HomeService] URL final de imagen para FeaturedArtist: $finalImageUrl');
+            
+            result.add(
+              FeaturedArtist(
+                artist: artist,
+                featuredReason: 'Destacado',
+                rank: i + 1,
+                imageUrl: finalImageUrl,
+              ),
+            );
+          } catch (e, stackTrace) {
+            AppLogger.error('[HomeService] Error al parsear artista $i: $e', e, stackTrace);
+            AppLogger.data('[HomeService] Datos que fallaron: $normalized');
+          }
+        }
+
+        AppLogger.success('[HomeService] Total de artistas procesados exitosamente: ${result.length}');
+        return result;
       } else {
+        AppLogger.warning('[HomeService] Respuesta vacía o inválida: ${response.statusCode}');
         return [];
       }
-    } on DioException {
+    } on DioException catch (e) {
+      AppLogger.error('[HomeService] Error DioException al obtener artistas destacados:');
+      AppLogger.network('  - Tipo: ${e.type}');
+      AppLogger.network('  - Mensaje: ${e.message}');
+      AppLogger.network('  - Error: ${e.error}');
+      AppLogger.network('  - URL completa: ${e.requestOptions.uri}');
+      AppLogger.network('  - Base URL: ${e.requestOptions.baseUrl}');
+      AppLogger.network('  - Path: ${e.requestOptions.path}');
+      if (e.response != null) {
+        AppLogger.network('  - Status: ${e.response?.statusCode}');
+        AppLogger.network('  - Data: ${e.response?.data}');
+      } else {
+        AppLogger.warning('  - Sin respuesta del servidor (posible problema de conexión)');
+        AppLogger.warning('  - Verifica que el backend esté corriendo en: http://10.0.2.2:3001');
+      }
+      AppLogger.error('[HomeService] StackTrace: ${e.stackTrace}', e, e.stackTrace);
       return [];
-    } catch (e) {
+    } catch (e, stackTrace) {
+      AppLogger.error('[HomeService] Error inesperado al obtener artistas destacados: $e', e, stackTrace);
       return [];
     }
+  }
+
+  Map<String, dynamic> _normalizeArtistMap(Map<String, dynamic> raw) {
+    final normalized = <String, dynamic>{};
+    
+    // Mapear campos comunes
+    raw.forEach((key, value) {
+      switch (key) {
+        case 'id':
+          normalized['id'] = value;
+          break;
+        case 'name':
+          // Si viene 'name' del backend, usarlo como stage_name si no hay stageName
+          if (!normalized.containsKey('stage_name') && value != null) {
+            normalized['stage_name'] = value;
+          }
+          normalized['name'] = value; // Mantener también name por si acaso
+          break;
+        case 'stageName':
+        case 'stage_name':
+          normalized['stage_name'] = value;
+          break;
+        case 'userId':
+        case 'user_id':
+          normalized['user_id'] = value;
+          break;
+        case 'profilePhotoUrl':
+        case 'profile_photo_url':
+          normalized['profile_photo_url'] = value;
+          break;
+        case 'coverPhotoUrl':
+        case 'cover_photo_url':
+          normalized['cover_photo_url'] = value;
+          break;
+        case 'websiteUrl':
+        case 'website_url':
+          normalized['website_url'] = value;
+          break;
+        case 'socialLinks':
+        case 'social_links':
+          normalized['social_links'] = value;
+          break;
+        case 'verificationStatus':
+        case 'verification_status':
+          normalized['verification_status'] = value ?? false;
+          break;
+        case 'totalStreams':
+        case 'total_streams':
+          normalized['total_streams'] = value ?? 0;
+          break;
+        case 'totalFollowers':
+        case 'total_followers':
+          normalized['total_followers'] = value ?? 0;
+          break;
+        case 'monthlyListeners':
+        case 'monthly_listeners':
+          normalized['monthly_listeners'] = value ?? 0;
+          break;
+        case 'bio':
+        case 'biography':
+          normalized['bio'] = value;
+          break;
+        case 'nationalityCode':
+        case 'nationality_code':
+          normalized['nationality_code'] = value;
+          break;
+        case 'featured':
+        case 'is_featured':
+        case 'isFeatured':
+          normalized['featured'] = value ?? false;
+          break;
+        case 'createdAt':
+        case 'created_at':
+          normalized['created_at'] = value;
+          break;
+        case 'updatedAt':
+        case 'updated_at':
+          normalized['updated_at'] = value;
+          break;
+        default:
+          // Si ya está en snake_case, mantenerlo
+          if (key.contains('_')) {
+            normalized[key] = value;
+          } else {
+            // Convertir camelCase a snake_case automáticamente
+            final snakeKey = _camelToSnake(key);
+            normalized[snakeKey] = value;
+          }
+      }
+    });
+    
+    // Asegurar que siempre haya un stage_name
+    if (!normalized.containsKey('stage_name') && normalized.containsKey('name')) {
+      normalized['stage_name'] = normalized['name'];
+    }
+    
+    // Asegurar valores por defecto
+    normalized['verification_status'] ??= false;
+    normalized['total_streams'] ??= 0;
+    normalized['total_followers'] ??= 0;
+    normalized['monthly_listeners'] ??= 0;
+    
+    return normalized;
+  }
+  
+  /// Convertir camelCase a snake_case
+  String _camelToSnake(String input) {
+    return input.replaceAllMapped(RegExp(r'[A-Z]'), (match) {
+      return '_${match.group(0)!.toLowerCase()}';
+    });
   }
 
   /// Obtener canciones destacadas desde el admin
   /// Estas son las canciones que el administrador ha marcado como destacadas
   Future<List<FeaturedSong>> getFeaturedSongs({int limit = 20, bool forceRefresh = false}) async {
     try {
-      final url = '${ApiConfig.baseUrl}/public/featured/songs';
+      final url = '/public/featured/songs';
+      AppLogger.debug('[HomeService] Obteniendo canciones destacadas desde: ${ApiConfig.baseUrl}$url');
       
       // Agregar timestamp para evitar caché si se fuerza el refresh
       final queryParams = <String, dynamic>{
@@ -180,7 +406,7 @@ class HomeService {
                                    songData['coverImageUrl'] as String? ??
                                    songData['cover_image_url'] as String?;
                 
-                final normalizedCoverUrl = _normalizeCoverUrl(rawCoverUrl);
+                final normalizedCoverUrl = UrlNormalizer.normalizeImageUrl(rawCoverUrl);
                 
                 song = Song(
                   id: tempSong.id,
@@ -210,7 +436,7 @@ class HomeService {
                                    songData['coverArtUrl'] as String? ??
                                    songData['coverImageUrl'] as String? ??
                                    songData['cover_image_url'] as String?;
-                final normalizedCoverUrl = _normalizeCoverUrl(rawCoverUrl);
+                final normalizedCoverUrl = UrlNormalizer.normalizeImageUrl(rawCoverUrl);
                 song = Song(
                   id: tempSong.id,
                   artistId: tempSong.artistId,
@@ -242,7 +468,7 @@ class HomeService {
                                  songData['coverImageUrl'] as String? ??
                                  songData['cover_image_url'] as String?;
               
-              final normalizedCoverUrl = _normalizeCoverUrl(rawCoverUrl);
+              final normalizedCoverUrl = UrlNormalizer.normalizeImageUrl(rawCoverUrl);
               
               song = Song(
                 id: tempSong.id,
@@ -296,7 +522,7 @@ class HomeService {
   Future<List<Song>> getPopularSongs({int limit = 10}) async {
     try {
       final response = await _dio.get(
-        '${ApiConfig.baseUrl}/public/songs/top',
+        '/public/songs/top',
         queryParameters: {'limit': limit},
       );
 
@@ -334,7 +560,7 @@ class HomeService {
   Future<List<Artist>> getTopArtists({int limit = 8}) async {
     try {
       final response = await _dio.get(
-        '${ApiConfig.baseUrl}/public/artists/top',
+        '/public/artists/top',
         queryParameters: {'limit': limit},
       );
 
@@ -366,7 +592,8 @@ class HomeService {
   /// Obtener playlists destacadas
   Future<List<FeaturedPlaylist>> getFeaturedPlaylists({int limit = 6}) async {
     try {
-      final url = '${ApiConfig.baseUrl}/public/featured/playlists';
+      final url = '/public/featured/playlists';
+      AppLogger.debug('[HomeService] Obteniendo playlists destacadas desde: ${ApiConfig.baseUrl}$url');
       final response = await _dio.get(
         url,
         queryParameters: {'limit': limit},
@@ -388,7 +615,7 @@ class HomeService {
             // Normalizar coverArtUrl antes de parsear (convertir localhost a 10.0.2.2)
             final coverArtUrl = item['coverArtUrl'] ?? item['cover_art_url'];
             if (coverArtUrl != null && coverArtUrl is String && coverArtUrl.isNotEmpty) {
-              final normalizedCoverUrl = _normalizeCoverUrl(coverArtUrl);
+              final normalizedCoverUrl = UrlNormalizer.normalizeImageUrl(coverArtUrl);
               if (normalizedCoverUrl != null && normalizedCoverUrl.isNotEmpty) {
                 item['coverArtUrl'] = normalizedCoverUrl;
                 item['cover_art_url'] = normalizedCoverUrl;
@@ -457,41 +684,5 @@ class HomeService {
     }
   }
 
-  /// Normalizar URL de portada: convertir ruta relativa a absoluta si es necesario
-  String? _normalizeCoverUrl(String? coverUrl) {
-    if (coverUrl == null || coverUrl.isEmpty) {
-      return null;
-    }
-
-    // Si ya es una URL completa (http:// o https://), normalizarla para el emulador
-    if (coverUrl.startsWith('http://') || coverUrl.startsWith('https://')) {
-      if (coverUrl.contains('localhost') || coverUrl.contains('127.0.0.1')) {
-        return coverUrl.replaceAll('localhost', '10.0.2.2').replaceAll('127.0.0.1', '10.0.2.2');
-      }
-      return coverUrl;
-    }
-
-    // Extraer el dominio base de ApiConfig
-    final baseUrl = ApiConfig.baseUrl;
-    String cleanBaseUrl = baseUrl.replaceAll('/api/v1', '').replaceAll(RegExp(r'/$'), '');
-    
-    // Asegurar que use 10.0.2.2 en lugar de localhost para emulador
-    if (cleanBaseUrl.contains('localhost') || cleanBaseUrl.contains('127.0.0.1')) {
-      cleanBaseUrl = cleanBaseUrl.replaceAll('localhost', '10.0.2.2').replaceAll('127.0.0.1', '10.0.2.2');
-    }
-
-    // Si es una ruta relativa que empieza con /uploads, construir URL completa
-    if (coverUrl.startsWith('/uploads/')) {
-      return '$cleanBaseUrl$coverUrl';
-    }
-
-    // Si es una ruta relativa sin /, agregar /uploads/covers/
-    if (!coverUrl.startsWith('/')) {
-      return '$cleanBaseUrl/uploads/covers/$coverUrl';
-    }
-
-    // Si ya tiene / al inicio pero no es /uploads, construir URL completa
-    return '$cleanBaseUrl$coverUrl';
-  }
 
 }

@@ -7,7 +7,8 @@ RUN apk add --no-cache \
     python3 \
     make \
     g++ \
-    ffmpeg
+    ffmpeg \
+    vips-dev
 
 # Copiar archivos de dependencias
 COPY package*.json ./

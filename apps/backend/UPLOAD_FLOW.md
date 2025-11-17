@@ -307,3 +307,5 @@ BullMQ proporciona dashboard para monitorear:
 2. Verificar formato del archivo de audio
 3. Revisar logs del procesador
 
+
+

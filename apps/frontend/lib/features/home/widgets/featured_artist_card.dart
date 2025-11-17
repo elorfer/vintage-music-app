@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/models/artist_model.dart';
+import '../../../core/utils/number_formatter.dart';
 
 class FeaturedArtistCard extends StatelessWidget {
   final FeaturedArtist featuredArtist;
@@ -40,64 +42,7 @@ class FeaturedArtistCard extends StatelessWidget {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: artist.verificationStatus
-                    ? Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              const Color(0xFF667eea),
-                              const Color(0xFF764ba2),
-                            ],
-                          ),
-                        ),
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            // Ícono de verificación
-                            const Icon(
-                              Icons.verified,
-                              color: Colors.white,
-                              size: 40,
-                            ),
-                            // Badge de verificado
-                            Positioned(
-                              top: 8,
-                              right: 8,
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Icon(
-                                  Icons.verified,
-                                  color: Colors.white,
-                                  size: 16,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              const Color(0xFFF2740B),
-                              const Color(0xFFE35A01),
-                            ],
-                          ),
-                        ),
-                        child: const Icon(
-                          Icons.person,
-                          color: Colors.white,
-                          size: 40,
-                        ),
-                      ),
+                child: _buildImageOrPlaceholder(),
               ),
             ),
             
@@ -120,7 +65,7 @@ class FeaturedArtistCard extends StatelessWidget {
             
             // Seguidores
             Text(
-              '${_formatNumber(artist.totalFollowers)} seguidores',
+              '${NumberFormatter.format(artist.totalFollowers)} seguidores',
               style: GoogleFonts.inter(
                 fontSize: 12,
                 color: Colors.white.withValues(alpha: 0.7),
@@ -156,13 +101,73 @@ class FeaturedArtistCard extends StatelessWidget {
     );
   }
 
-  String _formatNumber(int number) {
-    if (number >= 1000000) {
-      return '${(number / 1000000).toStringAsFixed(1)}M';
-    } else if (number >= 1000) {
-      return '${(number / 1000).toStringAsFixed(1)}K';
-    } else {
-      return number.toString();
+  Widget _buildImageOrPlaceholder() {
+    final url = featuredArtist.imageUrl 
+        ?? featuredArtist.artist.profilePhotoUrl 
+        ?? featuredArtist.artist.coverPhotoUrl;
+    if (url != null && url.isNotEmpty) {
+      return CachedNetworkImage(
+        imageUrl: url,
+        fit: BoxFit.cover,
+        memCacheWidth: 280, // 2x para pantallas de alta densidad
+        memCacheHeight: 280,
+        maxWidthDiskCache: 560, // Cache en disco más grande
+        maxHeightDiskCache: 560,
+        fadeInDuration: const Duration(milliseconds: 200),
+        fadeOutDuration: const Duration(milliseconds: 100),
+        errorWidget: (context, url, error) {
+          // Si falla, intentar con el placeholder
+          return _placeholder();
+        },
+        placeholder: (context, url) {
+          return _loadingShimmer();
+        },
+        // Key estable para evitar reconstrucciones innecesarias
+        key: ValueKey('artist_image_${featuredArtist.artist.id}_$url'),
+      );
     }
+    return _placeholder();
   }
+
+  Widget _placeholder() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFFF2740B),
+            Color(0xFFE35A01),
+          ],
+        ),
+      ),
+      child: const Icon(
+        Icons.person,
+        color: Colors.white,
+        size: 40,
+      ),
+    );
+  }
+
+  Widget _loadingShimmer() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF667eea),
+            Color(0xFF764ba2),
+          ],
+        ),
+      ),
+      child: const Center(
+        child: CircularProgressIndicator(
+          color: Colors.white,
+          strokeWidth: 2,
+        ),
+      ),
+    );
+  }
+
 }

@@ -20,7 +20,26 @@ export class Artist {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'user_id' })
+  // Nuevo modelo principal
+  @Column({ name: 'name', length: 150, nullable: true })
+  name?: string;
+
+  @Column({ name: 'profile_photo_url', type: 'text', nullable: true })
+  profilePhotoUrl?: string;
+
+  @Column({ name: 'cover_photo_url', type: 'text', nullable: true })
+  coverPhotoUrl?: string;
+
+  @Column({ name: 'nationality_code', type: 'char', length: 2, nullable: true })
+  nationalityCode?: string;
+
+  @Column({ name: 'biography', type: 'text', nullable: true })
+  biography?: string;
+
+  @Column({ name: 'featured', type: 'boolean', default: false })
+  featured: boolean;
+
+  @Column({ name: 'user_id', nullable: true })
   userId: string;
 
   @Column({ name: 'stage_name', length: 100 })

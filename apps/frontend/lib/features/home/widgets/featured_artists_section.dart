@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:go_router/go_router.dart';
+import 'package:shimmer/shimmer.dart';
+import '../../../features/artists/models/artist.dart';
 import '../../../core/providers/home_provider.dart';
 import '../../../core/models/artist_model.dart';
 import '../../../core/widgets/fast_scroll_physics.dart';
@@ -42,7 +45,7 @@ class FeaturedArtistsSection extends ConsumerWidget {
               ),
               TextButton(
                 onPressed: () {
-                  // TODO: Navegar a vista de todos los artistas
+                  context.push('/artists');
                 },
                 style: TextButton.styleFrom(
                   foregroundColor: Colors.white.withValues(alpha: 0.8),
@@ -62,28 +65,33 @@ class FeaturedArtistsSection extends ConsumerWidget {
         
         const SizedBox(height: 16),
         
-        // Lista horizontal de artistas optimizada
+        // Lista horizontal de artistas optimizada con Pull to Refresh
         SizedBox(
           height: 220,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            cacheExtent: 800, // Aumentado a 800px para scroll más rápido y fluido
-            physics: const FastScrollPhysics(), // Scroll más rápido y fluido
-            itemCount: featuredArtists.length,
-            itemBuilder: (context, index) {
-              final featuredArtist = featuredArtists[index];
-              return RepaintBoundary(
-                key: ValueKey('artist_${featuredArtist.artist.id}'), // Key estable para optimización
-                child: FeaturedArtistCard(
-                  key: ValueKey('artist_card_${featuredArtist.artist.id}'), // Key estable
-                  featuredArtist: featuredArtist,
-                  onTap: () {
-                    _onArtistTap(context, featuredArtist.artist);
-                  },
-                ),
-              );
+          child: RefreshIndicator(
+            onRefresh: () async {
+              await ref.read(homeStateProvider.notifier).loadFeaturedArtists();
             },
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              cacheExtent: 800, // Aumentado a 800px para scroll más rápido y fluido
+              physics: const FastScrollPhysics(), // Scroll más rápido y fluido
+              itemCount: featuredArtists.length,
+              itemBuilder: (context, index) {
+                final featuredArtist = featuredArtists[index];
+                return RepaintBoundary(
+                  key: ValueKey('artist_${featuredArtist.artist.id}'), // Key estable para optimización
+                  child: FeaturedArtistCard(
+                    key: ValueKey('artist_card_${featuredArtist.artist.id}'), // Key estable
+                    featuredArtist: featuredArtist,
+                    onTap: () {
+                      _onArtistTap(context, featuredArtist.artist);
+                    },
+                  ),
+                );
+              },
+            ),
           ),
         ),
       ],
@@ -114,47 +122,46 @@ class FeaturedArtistsSection extends ConsumerWidget {
             itemBuilder: (context, index) {
               return RepaintBoundary(
                 key: ValueKey('loading_artist_$index'),
-                child: Container(
-                width: 140,
-                margin: const EdgeInsets.only(right: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 140,
-                      height: 140,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Center(
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
+                child: Shimmer.fromColors(
+                  baseColor: Colors.white.withValues(alpha: 0.1),
+                  highlightColor: Colors.white.withValues(alpha: 0.3),
+                  period: const Duration(milliseconds: 1200),
+                  child: Container(
+                    width: 140,
+                    margin: const EdgeInsets.only(right: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 140,
+                          height: 140,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 12),
+                        Container(
+                          height: 16,
+                          width: 100,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          height: 12,
+                          width: 80,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                    Container(
-                      height: 16,
-                      width: 100,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      height: 12,
-                      width: 80,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
               );
             },
           ),
@@ -220,12 +227,14 @@ class FeaturedArtistsSection extends ConsumerWidget {
   }
 
   void _onArtistTap(BuildContext context, Artist artist) {
-    // TODO: Navegar a perfil del artista
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Navegando a ${artist.stageName}'),
-        backgroundColor: const Color(0xFF667eea),
-      ),
+    final lite = ArtistLite(
+      id: artist.id,
+      name: artist.stageName ?? 'Artista',
+      profilePhotoUrl: artist.profilePhotoUrl,
+      coverPhotoUrl: artist.coverPhotoUrl,
+      nationalityCode: null,
+      featured: true,
     );
+    context.push('/artist/${artist.id}', extra: lite);
   }
 }

@@ -38,6 +38,7 @@ const navigation = [
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [highContrast, setHighContrast] = useState<boolean>(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const { data: session } = useSession();
   const pathname = usePathname();
@@ -65,12 +66,29 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     };
   }, [menuOpen]);
 
+  // Inicializar/guardar modo alto contraste
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const saved = localStorage.getItem('admin_high_contrast');
+    if (saved) {
+      const val = saved === '1';
+      setHighContrast(val);
+      document.documentElement.classList.toggle('high-contrast', val);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('admin_high_contrast', highContrast ? '1' : '0');
+    document.documentElement.classList.toggle('high-contrast', highContrast);
+  }, [highContrast]);
+
   return (
-    <div className="min-h-screen bg-warm-50">
+    <div className="min-h-screen antialiased bg-gradient-to-b from-gray-50 to-gray-100">
       {/* Mobile sidebar */}
       <div className={`fixed inset-0 z-50 lg:hidden ${sidebarOpen ? 'block' : 'hidden'}`}>
         <div className="fixed inset-0 bg-warm-600 bg-opacity-75" onClick={() => setSidebarOpen(false)} />
-        <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-white shadow-xl">
+        <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-white shadow-xl hc-shadow">
           <div className="flex h-16 items-center justify-between px-4">
             <div className="flex items-center">
               <div className="h-8 w-8 bg-vintage-600 rounded-lg flex items-center justify-center">
@@ -111,7 +129,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Desktop sidebar */}
       <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
-        <div className="flex flex-col flex-grow bg-white border-r border-warm-200">
+        <div className="flex flex-col flex-grow bg-white/95 backdrop-blur border-r border-gray-200 shadow-sm hc-shadow">
           <div className="flex h-16 items-center px-4">
             <div className="h-8 w-8 bg-vintage-600 rounded-lg flex items-center justify-center">
               <MusicalNoteIcon className="h-5 w-5 text-white" />
@@ -143,7 +161,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Main content */}
       <div className="lg:pl-64">
         {/* Top bar */}
-        <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-warm-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
+        <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white/95 backdrop-blur px-4 shadow-md hc-shadow sm:gap-x-6 sm:px-6 lg:px-8">
           <button
             type="button"
             className="-m-2.5 p-2.5 text-warm-700 lg:hidden"
@@ -155,10 +173,22 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
             <div className="flex flex-1" />
             <div className="flex items-center gap-x-4 lg:gap-x-6">
+              {/* Toggle Alto Contraste */}
+              <button
+                onClick={() => setHighContrast((v) => !v)}
+                className={`hidden sm:inline-flex items-center rounded-lg border px-3 py-1.5 text-sm transition ${
+                  highContrast
+                    ? 'bg-vintage-600 text-white border-vintage-600'
+                    : 'bg-white text-warm-700 border-gray-300 hover:border-vintage-500'
+                }`}
+                title="Alternar alto contraste"
+              >
+                {highContrast ? 'Contraste: Alto' : 'Contraste: Normal'}
+              </button>
               <div className="relative" ref={menuRef}>
                 <button
                   onClick={() => setMenuOpen((prev) => !prev)}
-                  className="flex items-center space-x-2 rounded-full bg-white border border-warm-200 px-3 py-1.5 shadow-sm hover:border-vintage-500 transition-colors"
+                  className="flex items-center space-x-2 rounded-full bg-white border border-gray-200 px-3 py-1.5 shadow-sm hover:border-vintage-500 transition-colors"
                 >
                   <div className="h-8 w-8 bg-vintage-100 rounded-full flex items-center justify-center">
                     <span className="text-sm font-semibold text-vintage-700">
@@ -206,6 +236,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
         </main>
       </div>
+
+      {/* Estilos globales para alto contraste */}
+      <style jsx global>{`
+        .high-contrast .hc-shadow {
+          box-shadow: 0 12px 28px rgba(16, 24, 40, 0.28) !important;
+        }
+        .high-contrast .hc-card {
+          box-shadow: 0 14px 32px rgba(16, 24, 40, 0.28) !important;
+        }
+        .high-contrast .hc-ring {
+          box-shadow: inset 0 0 0 2px rgba(16, 24, 40, 0.35) !important;
+        }
+      `}</style>
     </div>
   );
 }

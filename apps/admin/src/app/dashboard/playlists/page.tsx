@@ -208,6 +208,7 @@ export default function PlaylistsPage() {
     { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
     { name: 'Administrar usuarios', href: '/dashboard/users', icon: UsersIcon },
     { name: 'Gestionar canciones', href: '/dashboard/songs', icon: MusicalNoteIcon },
+    { name: 'Artistas', href: '/dashboard/artists', icon: UsersIcon },
     { name: 'Administrar Playlists', href: '/dashboard/playlists', icon: ListBulletIcon },
     { name: 'Contenido destacado', href: '/dashboard/featured', icon: StarIcon },
     { name: 'Aprobar contenido', href: '/dashboard/approvals', icon: ShieldCheckIcon },

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
@@ -22,25 +22,52 @@ export class FeaturedService {
   async getFeaturedSongs(limit: number = 10) {
     // Validar y limitar el límite para evitar consultas costosas
     const validLimit = Math.min(Math.max(1, limit), 100);
-    
-    return this.songRepository.find({
+
+    // 1) Primero, canciones marcadas explícitamente como destacadas
+    const featuredExplicit = await this.songRepository.find({
       where: { isFeatured: true, status: SongStatus.PUBLISHED },
       relations: ['artist', 'album', 'genre'],
       order: { createdAt: 'DESC' },
       take: validLimit,
     });
+
+    if (featuredExplicit.length >= validLimit) {
+      return featuredExplicit.slice(0, validLimit);
+    }
+
+    // 2) Si faltan, completar con canciones de artistas destacados (sin duplicar)
+    const remaining = validLimit - featuredExplicit.length;
+    const explicitIds = new Set(featuredExplicit.map((s) => s.id));
+
+    const fromFeaturedArtists = await this.songRepository
+      .createQueryBuilder('song')
+      .leftJoinAndSelect('song.artist', 'artist')
+      .leftJoinAndSelect('song.album', 'album')
+      .leftJoinAndSelect('song.genre', 'genre')
+      .where('song.status = :status', { status: SongStatus.PUBLISHED })
+      .andWhere('artist.isFeatured = true')
+      .orderBy('song.createdAt', 'DESC')
+      .limit(remaining * 2) // pedir un poco más para filtrar duplicados si hay
+      .getMany();
+
+    const deduped = fromFeaturedArtists.filter((s) => !explicitIds.has(s.id));
+    return [...featuredExplicit, ...deduped.slice(0, remaining)];
   }
 
   async getFeaturedArtists(limit: number = 10) {
     // Validar y limitar el límite para evitar consultas costosas
     const validLimit = Math.min(Math.max(1, limit), 100);
     
-    return this.artistRepository.find({
-      where: { isFeatured: true },
-      relations: ['user'],
-      order: { createdAt: 'DESC' },
-      take: validLimit,
-    });
+    // Solo artistas destacados que tengan foto de perfil y portada
+    return this.artistRepository
+      .createQueryBuilder('artist')
+      .leftJoinAndSelect('artist.user', 'user')
+      .where('artist.isFeatured = :isFeatured', { isFeatured: true })
+      // Aceptar artistas que tengan al menos UNA imagen (perfil o portada)
+      .andWhere('(artist.profilePhotoUrl IS NOT NULL OR artist.coverPhotoUrl IS NOT NULL)')
+      .orderBy('artist.updatedAt', 'DESC')
+      .limit(validLimit)
+      .getMany();
   }
 
   async getFeaturedPlaylists(limit: number = 10) {
@@ -78,6 +105,16 @@ export class FeaturedService {
   }
 
   async setArtistFeatured(artistId: string, featured: boolean) {
+    // Si se quiere destacar, validar que tenga imágenes cargadas
+    if (featured) {
+      const toValidate = await this.artistRepository.findOne({ where: { id: artistId } });
+      if (!toValidate) {
+        throw new NotFoundException('Artista no encontrado');
+      }
+      if (!toValidate.profilePhotoUrl || !toValidate.coverPhotoUrl) {
+        throw new BadRequestException('Para destacar un artista, debe tener foto de perfil y portada cargadas');
+      }
+    }
     // Usar update() para mejor rendimiento (una sola query)
     const updateResult = await this.artistRepository.update(
       { id: artistId },

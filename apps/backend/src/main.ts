@@ -17,17 +17,50 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
 
   // Configurar servicio estático para archivos subidos
+  // IMPORTANTE: Debe estar ANTES de Helmet para que funcione correctamente
   app.useStaticAssets(join(process.cwd(), 'uploads'), {
     prefix: '/uploads',
+    setHeaders: (res, path) => {
+      // Permitir CORS para archivos estáticos
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+      // Cache para imágenes
+      if (path.endsWith('.png') || path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.webp')) {
+        res.setHeader('Cache-Control', 'public, max-age=31536000');
+      }
+    },
   });
   
   // Configurar servicio estático para portadas
   app.useStaticAssets(join(process.cwd(), 'uploads', 'covers'), {
     prefix: '/uploads/covers',
+    setHeaders: (res, path) => {
+      // Permitir CORS para archivos estáticos
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+      // Cache para imágenes
+      if (path.endsWith('.png') || path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.webp')) {
+        res.setHeader('Cache-Control', 'public, max-age=31536000');
+      }
+    },
   });
 
   // Configuración de seguridad
-  app.use(helmet());
+  // Configurar Helmet para permitir imágenes desde cualquier origen
+  app.use(helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    crossOriginEmbedderPolicy: false,
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'"],
+        imgSrc: ["'self'", 'data:', 'http:', 'https:', 'blob:'],
+        fontSrc: ["'self'", 'data:'],
+        connectSrc: ["'self'", 'http:', 'https:'],
+      },
+    },
+  }));
   // app.use(compression.default());
 
   // CORS
@@ -36,15 +69,17 @@ async function bootstrap() {
     origin: isProduction
       ? true // En producción, permitir todos los orígenes (necesario para apps móviles)
       : [
-          'http://localhost:3001', // Admin panel (alternativo)
-          'http://localhost:3002', // Admin panel (puerto principal)
-          'http://localhost:3001', // Backend
+          'http://localhost:3000', // Admin panel (puerto alternativo)
+          'http://localhost:3001', // Backend y Admin panel
+          'http://localhost:3002', // Admin panel (puerto alternativo)
           'http://localhost:8080', // Flutter web
           'http://localhost:8081', // Flutter web alternativo
           'http://localhost:8082', // Flutter web alternativo
+          'http://127.0.0.1:3000', // Admin panel localhost alternativo
+          'http://127.0.0.1:3001', // Backend localhost
+          'http://127.0.0.1:3002', // Admin panel localhost
           'http://127.0.0.1:8080', // Flutter web localhost alternativo
           'http://127.0.0.1:8081', // Flutter web localhost alternativo
-          'http://127.0.0.1:3002', // Admin panel localhost
           'http://10.0.2.2:3001', // Android emulator
           'http://10.0.2.2:8080', // Android emulator Flutter
         ],
@@ -86,12 +121,15 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
-  const port = configService.get('PORT', 3000);
-  await app.listen(port);
+  const port = configService.get('PORT', 3001);
+  const host = configService.get('HOST', '0.0.0.0'); // Escuchar en todas las interfaces para permitir acceso desde emulador Android
+  
+  await app.listen(port, host);
   
   logger.log('═══════════════════════════════════════════════════════════');
-  logger.log(`🎵 Vintage Music Backend ejecutándose en puerto ${port}`);
+  logger.log(`🎵 Vintage Music Backend ejecutándose en ${host}:${port}`);
   logger.log(`📚 Documentación API disponible en http://localhost:${port}/api/docs`);
+  logger.log(`🌐 Accesible desde emulador Android en: http://10.0.2.2:${port}`);
   logger.log('═══════════════════════════════════════════════════════════');
   logger.log('✅ Logger configurado - Todos los logs serán visibles');
   logger.log('═══════════════════════════════════════════════════════════');

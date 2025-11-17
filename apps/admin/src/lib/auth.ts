@@ -26,18 +26,22 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
-          // Credenciales de desarrollo
-          if (credentials.email === 'admin@vintagemusic.com' && credentials.password === 'admin123') {
-            console.log('[NextAuth] authorize: credenciales de desarrollo válidas');
-            const user = {
-              id: 'dev-admin-001',
-              email: credentials.email,
-              name: 'Admin Vintage',
-              role: 'admin',
-              accessToken: 'dev-token-123',
-            };
-            console.log('[NextAuth] authorize: retornando usuario:', user);
-            return user;
+          // Credenciales de desarrollo (opcional, controlado por variable de entorno)
+          const enableDevAuth = process.env.NEXT_PUBLIC_ENABLE_DEV_AUTH === 'true';
+          if (enableDevAuth) {
+            if (credentials.email === 'admin@vintagemusic.com' && credentials.password === 'admin123') {
+              console.log('[NextAuth] authorize: dev auth habilitado y credenciales válidas');
+              const user = {
+                id: 'dev-admin-001',
+                email: credentials.email,
+                name: 'Admin Vintage',
+                role: 'admin',
+                // Nota: este token no sirve contra el backend; usar solo en modo mock
+                accessToken: 'dev-token-123',
+              };
+              console.log('[NextAuth] authorize: retornando usuario (dev):', user);
+              return user;
+            }
           }
 
           // Autenticación real con backend

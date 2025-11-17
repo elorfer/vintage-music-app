@@ -74,3 +74,5 @@ static const String baseUrl = 'http://10.0.2.2:3001';
 
 **Nota:** El puerto 3000 sigue siendo usado por Docker Desktop. No intentes cambiarlo de vuelta sin resolver el conflicto primero.
 
+
+

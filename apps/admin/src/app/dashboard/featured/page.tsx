@@ -18,7 +18,7 @@ import { apiClient } from '@/lib/api';
 
 const TABS = [
   { id: 'songs', label: 'Canciones Destacadas', icon: MusicalNoteIcon },
-  { id: 'artists', label: 'Artistas Destacados', icon: UsersIcon },
+  { id: 'artists', label: 'Artistas Destacados', icon: UsersIcon }, // Solo lectura (desde sección Artistas)
   { id: 'playlists', label: 'Playlists Destacadas', icon: MusicalNoteIcon },
 ];
 
@@ -32,6 +32,7 @@ export default function FeaturedPage() {
     { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
     { name: 'Administrar usuarios', href: '/dashboard/users', icon: UsersIcon },
     { name: 'Gestionar canciones', href: '/dashboard/songs', icon: MusicalNoteIcon },
+    { name: 'Artistas', href: '/dashboard/artists', icon: UsersIcon },
     { name: 'Administrar Playlists', href: '/dashboard/playlists', icon: ListBulletIcon },
     { name: 'Contenido destacado', href: '/dashboard/featured', icon: StarIcon },
     { name: 'Aprobar contenido', href: '/dashboard/approvals', icon: ShieldCheckIcon },
@@ -73,21 +74,7 @@ export default function FeaturedPage() {
     }
   );
 
-  const { data: allArtists, isLoading: artistsAllLoading, error: artistsError } = useQuery(
-    ['artists', 'all'],
-    async () => {
-      const response = await apiClient.getArtists(1, 1000);
-      console.log('📊 Respuesta de artistas:', response.data);
-      return response.data;
-    },
-    { 
-      enabled: activeTab === 'artists',
-      onError: (error: any) => {
-        console.error('❌ Error al cargar artistas:', error);
-        toast.error('Error al cargar artistas');
-      }
-    }
-  );
+  // Nota: Eliminado listado completo de artistas aquí para evitar gestión duplicada de destacados
 
   const { data: allPlaylists, isLoading: playlistsAllLoading, error: playlistsError } = useQuery(
     ['playlists', 'all'],
@@ -106,16 +93,15 @@ export default function FeaturedPage() {
   );
 
   const playlists = allPlaylists?.playlists || [];
-  const artists = allArtists?.artists || [];
+  // En artistas, solo se muestra la lista de destacados proveniente del backend
   const songs = allSongs?.songs || [];
 
   // Debug logs
   if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
     console.log('🎵 Canciones cargadas:', songs.length, songs);
-    console.log('👤 Artistas cargados:', artists.length, artists);
+    console.log('👤 Artistas destacados (solo lectura):', featuredArtists?.length || 0, featuredArtists);
     console.log('📋 Playlists cargadas:', playlists.length, playlists);
     console.log('📊 allSongs completo:', allSongs);
-    console.log('📊 allArtists completo:', allArtists);
     console.log('📊 allPlaylists completo:', allPlaylists);
   }
 
@@ -144,29 +130,7 @@ export default function FeaturedPage() {
     }
   );
 
-  const featureArtist = useMutation(
-    (id: string) => apiClient.featureArtist(id),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['featured', 'artists']);
-        queryClient.invalidateQueries(['artists', 'all']);
-        toast.success('Artista destacado exitosamente');
-      },
-      onError: () => toast.error('Error al destacar artista'),
-    }
-  );
-
-  const unfeatureArtist = useMutation(
-    (id: string) => apiClient.unfeatureArtist(id),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['featured', 'artists']);
-        queryClient.invalidateQueries(['artists', 'all']);
-        toast.success('Artista ya no está destacado');
-      },
-      onError: () => toast.error('Error al quitar destacado'),
-    }
-  );
+  // Eliminadas mutations de destacar/desdestacar artistas desde este módulo (gestión se hace en /artists)
 
   const featurePlaylist = useMutation(
     (id: string) => apiClient.featurePlaylist(id),
@@ -192,10 +156,10 @@ export default function FeaturedPage() {
     }
   );
 
-  const isLoading = songsLoading || artistsLoading || playlistsLoading || songsAllLoading || artistsAllLoading || playlistsAllLoading;
+  const isLoading = songsLoading || artistsLoading || playlistsLoading || songsAllLoading || playlistsAllLoading;
 
   const featuredSongsIds = new Set(featuredSongs?.map((s: any) => s.id) || []);
-  const featuredArtistsIds = new Set(featuredArtists?.map((a: any) => a.id) || []);
+  // No se necesitan IDs destacados de artistas aquí
   const featuredPlaylistsIds = new Set(featuredPlaylists?.map((p: any) => p.id) || []);
 
   return (
@@ -298,11 +262,6 @@ export default function FeaturedPage() {
                   <p className="text-sm text-red-600 mb-2">Error al cargar canciones</p>
                   <p className="text-xs text-gray-500">{songsError?.message || 'Error desconocido'}</p>
                 </div>
-              ) : activeTab === 'artists' && artistsError ? (
-                <div className="text-center py-12">
-                  <p className="text-sm text-red-600 mb-2">Error al cargar artistas</p>
-                  <p className="text-xs text-gray-500">{artistsError?.message || 'Error desconocido'}</p>
-                </div>
               ) : activeTab === 'playlists' && playlistsError ? (
                 <div className="text-center py-12">
                   <p className="text-sm text-red-600 mb-2">Error al cargar playlists</p>
@@ -316,11 +275,8 @@ export default function FeaturedPage() {
                   onUnfeature={unfeatureSong.mutate}
                 />
               ) : activeTab === 'artists' ? (
-                <ArtistsSection
-                  allArtists={artists}
-                  featuredArtistsIds={featuredArtistsIds}
-                  onFeature={featureArtist.mutate}
-                  onUnfeature={unfeatureArtist.mutate}
+                <ArtistsReadOnlySection
+                  featuredArtists={featuredArtists || []}
                 />
               ) : (
                 <PlaylistsSection
@@ -419,11 +375,11 @@ function SongsSection({ allSongs, featuredSongsIds, onFeature, onUnfeature }: an
   );
 }
 
-function ArtistsSection({ allArtists, featuredArtistsIds, onFeature, onUnfeature }: any) {
-  if (!allArtists || allArtists.length === 0) {
+function ArtistsReadOnlySection({ featuredArtists }: any) {
+  if (!featuredArtists || featuredArtists.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-sm text-gray-500">No hay artistas disponibles</p>
+        <p className="text-sm text-gray-500">No hay artistas destacados</p>
       </div>
     );
   }
@@ -431,17 +387,24 @@ function ArtistsSection({ allArtists, featuredArtistsIds, onFeature, onUnfeature
   return (
     <div className="space-y-4">
       <div className="grid gap-4">
-        {allArtists.map((artist: any) => {
-          const isFeatured = featuredArtistsIds.has(artist.id);
+        {featuredArtists.map((artist: any) => {
           return (
             <div
               key={artist.id}
               className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition"
             >
               <div className="flex items-center gap-4 flex-1 min-w-0">
-                <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-semibold">
-                  {artist.stageName?.[0]?.toUpperCase() || 'A'}
-                </div>
+                {artist.profilePhotoUrl ? (
+                  <img
+                    src={artist.profilePhotoUrl}
+                    alt={artist.stageName || 'Artista'}
+                    className="h-12 w-12 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-semibold">
+                    {artist.stageName?.[0]?.toUpperCase() || 'A'}
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">
                     {artist.stageName || artist.user?.email || 'Sin nombre'}
@@ -451,23 +414,9 @@ function ArtistsSection({ allArtists, featuredArtistsIds, onFeature, onUnfeature
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => (isFeatured ? onUnfeature(artist.id) : onFeature(artist.id))}
-                className={`ml-4 px-4 py-2 rounded-lg text-sm font-medium transition ${
-                  isFeatured
-                    ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {isFeatured ? (
-                  <>
-                    <StarIcon className="h-4 w-4 inline mr-1" />
-                    Destacado
-                  </>
-                ) : (
-                  'Destacar'
-                )}
-              </button>
+              <span className="ml-4 px-3 py-1 rounded-lg text-xs font-medium bg-yellow-50 text-yellow-700 border border-yellow-200">
+                Destacado
+              </span>
             </div>
           );
         })}

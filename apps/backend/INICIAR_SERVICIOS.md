@@ -114,3 +114,5 @@ Según tu `.env`:
 
 **Nota:** El servidor NestJS seguirá intentando conectarse automáticamente. Una vez que PostgreSQL esté disponible, se conectará automáticamente.
 
+
+

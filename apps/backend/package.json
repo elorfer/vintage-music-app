@@ -26,6 +26,7 @@
     "update-durations": "ts-node -r tsconfig-paths/register scripts/update-song-durations.ts"
   },
   "dependencies": {
+    "sharp": "^0.33.2",
     "@aws-sdk/client-s3": "^3.490.0",
     "@aws-sdk/s3-request-presigner": "^3.490.0",
     "@nestjs/bull": "^10.2.3",

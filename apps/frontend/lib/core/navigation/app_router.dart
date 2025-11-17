@@ -11,6 +11,8 @@ import '../../features/home/screens/home_screen.dart';
 import '../../features/search/screens/search_screen.dart';
 import '../../features/library/screens/library_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
+import '../../features/artists/pages/artist_page.dart';
+import '../../features/artists/models/artist.dart';
 import '../providers/auth_provider.dart';
 import 'main_navigation.dart';
 import 'page_transitions.dart';
@@ -148,6 +150,35 @@ class GoRouterNotifier extends ChangeNotifier {
                 transitionDuration: const Duration(milliseconds: 250),
                 reverseTransitionDuration: const Duration(milliseconds: 200),
               ),
+            ),
+            // Artist Detail
+            GoRoute(
+              path: '/artist/:id',
+              pageBuilder: (context, state) {
+                final artistId = state.pathParameters['id'] ?? '';
+                final extra = state.extra;
+                ArtistLite? artistLite;
+                if (extra is ArtistLite) {
+                  artistLite = extra;
+                } else {
+                  // Si no llega extra, mostrar un placeholder mínimo
+                  artistLite = ArtistLite(
+                    id: artistId,
+                    name: 'Artista',
+                    profilePhotoUrl: null,
+                    coverPhotoUrl: null,
+                    nationalityCode: null,
+                    featured: false,
+                  );
+                }
+                return CustomTransitionPage<void>(
+                  key: state.pageKey,
+                  child: ArtistPage(artist: artistLite),
+                  transitionsBuilder: SpotifyPageTransitions.horizontalTransition,
+                  transitionDuration: const Duration(milliseconds: 250),
+                  reverseTransitionDuration: const Duration(milliseconds: 200),
+                );
+              },
             ),
             // Playlist Detail - transición de escala (se expande como modal)
             GoRoute(

@@ -8,8 +8,8 @@ class AppConfig {
 
   // URLs de configuración
   static const String _productionUrl = 'http://backend-alb-1038609925.us-east-1.elb.amazonaws.com';
-  static const String _developmentUrlAndroid = 'http://10.0.2.2:3000'; // Emulador Android y dispositivos móviles
-  static const String _developmentUrlWeb = 'http://localhost:3000'; // Flutter Web
+  static const String _developmentUrlAndroid = 'http://10.0.2.2:3001'; // Emulador Android y dispositivos móviles (ajustado al puerto expuesto)
+  static const String _developmentUrlWeb = 'http://localhost:3001'; // Flutter Web
 
   // Configuración de la API
   // En modo DEBUG: usa localhost/10.0.2.2 automáticamente

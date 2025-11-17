@@ -98,6 +98,52 @@ export const apiClient = {
     api.get(`/artists?page=${page}&limit=${limit}`),
   
   getArtist: (id: string) => api.get(`/artists/${id}`),
+
+  // Crear artista (multipart/form-data)
+  createArtist: (data: {
+    name: string;
+    nationalityCode?: string;
+    biography?: string;
+    featured?: boolean;
+    userId?: string;
+    phone?: string;
+    profileFile?: File | null;
+    coverFile?: File | null;
+  }) => {
+    const form = new FormData();
+    form.append('name', data.name);
+    if (data.nationalityCode) form.append('nationalityCode', data.nationalityCode);
+    if (data.biography) form.append('biography', data.biography);
+    if (typeof data.featured === 'boolean') form.append('featured', String(data.featured));
+    if (data.userId) form.append('userId', data.userId);
+    if (data.phone) form.append('phone', data.phone);
+    if (data.profileFile) form.append('profile', data.profileFile);
+    if (data.coverFile) form.append('cover', data.coverFile);
+    return api.post('/artists', form);
+  },
+
+  // Actualizar artista (multipart/form-data)
+  updateArtist: (id: string, data: {
+    name?: string;
+    nationalityCode?: string;
+    biography?: string;
+    featured?: boolean;
+    profileFile?: File | null;
+    coverFile?: File | null;
+  }) => {
+    const form = new FormData();
+    if (data.name) form.append('name', data.name);
+    if (data.nationalityCode) form.append('nationalityCode', data.nationalityCode);
+    if (data.biography !== undefined) form.append('biography', data.biography);
+    if (typeof data.featured === 'boolean') form.append('featured', String(data.featured));
+    if (data.profileFile) form.append('profile', data.profileFile);
+    if (data.coverFile) form.append('cover', data.coverFile);
+    return api.put(`/artists/${id}`, form);
+  },
+
+  // Toggle destacado
+  toggleArtistFeatured: (id: string, featured: boolean) =>
+    api.put(`/artists/${id}/feature`, { featured }),
   
   getArtistStats: (id: string) => api.get(`/artists/${id}/stats`),
   
@@ -214,12 +260,9 @@ export const apiClient = {
   unfeatureSong: (id: string) => api.delete(`/featured/songs/${id}/feature`),
 
   getFeaturedArtists: (limit = 10) => api.get(`/featured/artists?limit=${limit}`),
-  featureArtist: (id: string) => api.post(`/featured/artists/${id}/feature`),
-  unfeatureArtist: (id: string) => api.delete(`/featured/artists/${id}/feature`),
+  // Eliminado: featureArtist / unfeatureArtist. La gestión se hace solo desde /artists vía toggleArtistFeatured
 
-  getFeaturedPlaylists: (limit = 10) => api.get(`/featured/playlists?limit=${limit}`),
-  featurePlaylist: (id: string) => api.post(`/featured/playlists/${id}/feature`),
-  unfeaturePlaylist: (id: string) => api.delete(`/featured/playlists/${id}/feature`),
+
 };
 
 export default api;

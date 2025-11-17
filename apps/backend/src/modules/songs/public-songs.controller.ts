@@ -102,7 +102,22 @@ export class PublicSongsController {
   }
 
   /**
+   * Obtener canciones más populares (mantiene compatibilidad)
+   * IMPORTANTE: Debe estar ANTES de @Get(':id') para que la ruta 'top' no sea interpretada como un ID
+   */
+  @Get('top')
+  @ApiOperation({ summary: 'Obtener canciones más populares (público)' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Número de canciones a devolver' })
+  @ApiResponse({ status: 200, description: 'Lista de canciones top obtenida exitosamente' })
+  async getTopSongs(
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number = 10,
+  ) {
+    return this.songsService.getTopSongs(limit);
+  }
+
+  /**
    * Obtiene una canción por ID (optimizado para Flutter)
+   * IMPORTANTE: Debe estar DESPUÉS de las rutas específicas como 'top' y 'featured'
    */
   @Get(':id')
   @ApiOperation({ summary: 'Obtener canción por ID (optimizado para Flutter)' })
@@ -115,18 +130,5 @@ export class PublicSongsController {
   @ApiResponse({ status: 404, description: 'Canción no encontrada' })
   async findOne(@Param('id') id: string): Promise<SongResponseDto> {
     return this.songsService.findOneOptimized(id);
-  }
-
-  /**
-   * Obtener canciones más populares (mantiene compatibilidad)
-   */
-  @Get('top')
-  @ApiOperation({ summary: 'Obtener canciones más populares (público)' })
-  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Número de canciones a devolver' })
-  @ApiResponse({ status: 200, description: 'Lista de canciones top obtenida exitosamente' })
-  async getTopSongs(
-    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number = 10,
-  ) {
-    return this.songsService.getTopSongs(limit);
   }
 }

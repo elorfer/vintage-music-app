@@ -5,6 +5,7 @@ import '../config/api_config.dart';
 import '../models/playlist_model.dart';
 import '../models/song_model.dart';
 import 'http_cache_service.dart';
+import '../utils/url_normalizer.dart';
 
 class PlaylistService {
   static final PlaylistService _instance = PlaylistService._internal();
@@ -229,7 +230,7 @@ class PlaylistService {
     // Siempre normalizar la URL, incluso si es null o vacío
     // Esto asegura que si hay una URL, se normalice correctamente
     if (coverUrl != null && coverUrl is String && coverUrl.isNotEmpty && coverUrl.trim().isNotEmpty) {
-      final normalizedUrl = _normalizeCoverUrl(coverUrl);
+      final normalizedUrl = UrlNormalizer.normalizeImageUrl(coverUrl);
       normalized['coverArtUrl'] = normalizedUrl;
       normalized['cover_art_url'] = normalizedUrl; // También mantener snake_case por compatibilidad
     } else {
@@ -339,7 +340,7 @@ class PlaylistService {
     // Normalizar URL de portada - convertir localhost a 10.0.2.2 para emulador Android
     final coverArtUrl = normalized['cover_art_url'] ?? data['coverArtUrl'] ?? data['cover_art_url'] ?? data['coverImageUrl'];
     if (coverArtUrl != null && coverArtUrl is String) {
-      normalized['cover_art_url'] = _normalizeCoverUrl(coverArtUrl);
+      normalized['cover_art_url'] = UrlNormalizer.normalizeImageUrl(coverArtUrl);
     }
     
     // Asegurar campos requeridos
@@ -528,41 +529,6 @@ class PlaylistService {
   }
 
   /// Normalizar URL de portada: convertir ruta relativa a absoluta y localhost a 10.0.2.2
-  String? _normalizeCoverUrl(String? coverUrl) {
-    if (coverUrl == null || coverUrl.isEmpty) {
-      return null;
-    }
-
-    // Si ya es una URL completa (http:// o https://), normalizarla para el emulador
-    if (coverUrl.startsWith('http://') || coverUrl.startsWith('https://')) {
-      if (coverUrl.contains('localhost') || coverUrl.contains('127.0.0.1')) {
-        return coverUrl.replaceAll('localhost', '10.0.2.2').replaceAll('127.0.0.1', '10.0.2.2');
-      }
-      return coverUrl;
-    }
-
-    // Extraer el dominio base de ApiConfig
-    final baseUrl = ApiConfig.baseUrl;
-    String cleanBaseUrl = baseUrl.replaceAll('/api/v1', '').replaceAll(RegExp(r'/$'), '');
-    
-    // Asegurar que use 10.0.2.2 en lugar de localhost para emulador
-    if (cleanBaseUrl.contains('localhost') || cleanBaseUrl.contains('127.0.0.1')) {
-      cleanBaseUrl = cleanBaseUrl.replaceAll('localhost', '10.0.2.2').replaceAll('127.0.0.1', '10.0.2.2');
-    }
-
-    // Si es una ruta relativa que empieza con /uploads, construir URL completa
-    if (coverUrl.startsWith('/uploads/')) {
-      return '$cleanBaseUrl$coverUrl';
-    }
-
-    // Si es una ruta relativa sin /, agregar /uploads/covers/
-    if (!coverUrl.startsWith('/')) {
-      return '$cleanBaseUrl/uploads/covers/$coverUrl';
-    }
-
-    // Si ya tiene / al inicio pero no es /uploads, construir URL completa
-    return '$cleanBaseUrl$coverUrl';
-  }
 
 }
 

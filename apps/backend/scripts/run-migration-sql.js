@@ -26,22 +26,23 @@ async function runMigration() {
     await client.connect();
     console.log('✅ Conectado exitosamente');
 
-    // Leer el archivo SQL
-    const sqlPath = path.join(__dirname, '../src/database/migrations/create-song-uploads-table.sql');
-    console.log(`📄 Leyendo archivo: ${sqlPath}`);
-    
-    if (!fs.existsSync(sqlPath)) {
-      throw new Error(`Archivo no encontrado: ${sqlPath}`);
+    // Ejecutar migraciones necesarias en orden
+    const files = [
+      path.join(__dirname, '../src/database/migrations/create-song-uploads-table.sql'),
+      path.join(__dirname, '../src/database/migrations/allow-null-user-id.sql'),
+    ];
+
+    for (const file of files) {
+      console.log(`📄 Leyendo archivo: ${file}`);
+      if (!fs.existsSync(file)) {
+        console.log(`⚠️ Archivo no encontrado, se omite: ${file}`);
+        continue;
+      }
+      const sql = fs.readFileSync(file, 'utf8');
+      console.log('📝 Ejecutando migración SQL...\n');
+      await client.query(sql);
+      console.log('✅ Ejecutado con éxito:', path.basename(file));
     }
-
-    const sql = fs.readFileSync(sqlPath, 'utf8');
-    console.log('📝 Ejecutando migración SQL...\n');
-
-    // Ejecutar el SQL
-    await client.query(sql);
-    
-    console.log('✅ Migración ejecutada exitosamente!');
-    console.log('✅ Tabla song_uploads creada con todos sus índices');
 
     // Verificar que la tabla existe
     const result = await client.query(`
@@ -75,4 +76,5 @@ async function runMigration() {
 }
 
 runMigration();
+
 

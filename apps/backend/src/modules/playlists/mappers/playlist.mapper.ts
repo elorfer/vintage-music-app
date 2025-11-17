@@ -116,7 +116,7 @@ export class PlaylistMapper {
               stageName: ps.song!.artist.stageName ?? '',
               displayName: ps.song!.artist.displayName,
               bio: ps.song!.artist.bio,
-              avatarUrl: ps.song!.artist.avatarUrl,
+              avatarUrl: (ps.song!.artist as any).profilePhotoUrl,
               totalStreams: ps.song!.artist.totalStreams ?? 0,
             } : undefined,
             totalStreams: ps.song!.totalStreams ?? 0,

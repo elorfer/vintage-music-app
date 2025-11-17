@@ -84,7 +84,7 @@ class HomeNotifier extends Notifier<HomeState> {
   }
 
   /// Cargar todos los datos de la pantalla de inicio
-  Future<void> loadHomeData() async {
+  Future<void> loadHomeData({bool forceRefresh = false}) async {
     try {
       state = state.copyWith(isLoading: true, error: null);
 
@@ -100,7 +100,7 @@ class HomeNotifier extends Notifier<HomeState> {
         // Artistas destacados
         _homeService.getFeaturedArtists(limit: 6).then((value) => featuredArtists = value).catchError((_) => <FeaturedArtist>[]),
         // Canciones destacadas
-        _homeService.getFeaturedSongs(limit: 20).then((value) => featuredSongs = value).catchError((_) => <FeaturedSong>[]),
+        _homeService.getFeaturedSongs(limit: 20, forceRefresh: forceRefresh).then((value) => featuredSongs = value).catchError((_) => <FeaturedSong>[]),
         // Playlists destacadas
         _homeService.getFeaturedPlaylists(limit: 6).then((value) => featuredPlaylists = value).catchError((_) => <FeaturedPlaylist>[]),
         // Canciones populares (error silencioso si falla)
@@ -130,47 +130,7 @@ class HomeNotifier extends Notifier<HomeState> {
 
   /// Refrescar datos (forzar refresh sin caché)
   Future<void> refresh() async {
-    try {
-      state = state.copyWith(isLoading: true, error: null);
-
-      // Cargar datos individualmente para manejar errores por separado
-      List<FeaturedArtist> featuredArtists = [];
-      List<FeaturedSong> featuredSongs = [];
-      List<FeaturedPlaylist> featuredPlaylists = [];
-      List<Song> popularSongs = [];
-      List<Artist> topArtists = [];
-
-      // Cargar datos en paralelo para mejor rendimiento
-      await Future.wait([
-        // Artistas destacados
-        _homeService.getFeaturedArtists(limit: 6).then((value) => featuredArtists = value).catchError((_) => <FeaturedArtist>[]),
-        // Canciones destacadas con forceRefresh para evitar caché
-        _homeService.getFeaturedSongs(limit: 20, forceRefresh: true).then((value) => featuredSongs = value).catchError((_) => <FeaturedSong>[]),
-        // Playlists destacadas
-        _homeService.getFeaturedPlaylists(limit: 6).then((value) => featuredPlaylists = value).catchError((_) => <FeaturedPlaylist>[]),
-        // Canciones populares (error silencioso si falla)
-        _homeService.getPopularSongs(limit: 10).then((value) => popularSongs = value).catchError((_) => <Song>[]),
-        // Artistas top
-        _homeService.getTopArtists(limit: 8).then((value) => topArtists = value).catchError((_) => <Artist>[]),
-      ]);
-
-      state = state.copyWith(
-        featuredArtists: featuredArtists,
-        featuredSongs: featuredSongs,
-        featuredPlaylists: featuredPlaylists,
-        popularSongs: popularSongs,
-        topArtists: topArtists,
-        isLoading: false,
-        error: null,
-        isInitialized: true,
-      );
-    } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: 'Error al refrescar datos: $e',
-        isInitialized: true,
-      );
-    }
+    await loadHomeData(forceRefresh: true);
   }
 
   /// Cargar solo artistas destacados

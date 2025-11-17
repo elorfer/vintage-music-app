@@ -127,3 +127,5 @@ El error de BullExplorer es un error de **runtime**, no de compilación. Esto si
 
 **Solución:** Asegúrate de que Redis esté corriendo antes de iniciar el servidor.
 
+
+

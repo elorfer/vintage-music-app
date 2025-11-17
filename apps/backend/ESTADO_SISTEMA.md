@@ -179,3 +179,5 @@ Authorization: Bearer <token>
 
 **Estado:** ✅ Listo para probar (esperando que el servidor termine de iniciar)
 
+
+
